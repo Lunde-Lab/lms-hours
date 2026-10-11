@@ -1,0 +1,984 @@
+<title>LMS Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: plain white app bar with tabs over one working view; tech rows open a sheet for entry. Light only. */
+:root{
+  color-scheme:light;
+  --bg:#F4F5F7; --surface:#FFFFFF; --surface-2:#F7F8FA; --line:#E1E4E8; --line-2:#CDD2D8; --fg:#1B1F24; --muted:#636B74;
+  --accent:#1F5FBF; --accent-fg:#FFFFFF; --accent-soft:#E8F0FB;
+  --warn:#B25E00; --warn-soft:#FFF4E5; --ok:#1E7A46; --danger:#C0362C;
+  --ph-k:#DDD5F7; --ph-h:#FAE0B8; --ph-d:#CFE4F7; --ph-f:#FFFFFF; --ph-hatch:#F3F4F6; --ph-ink:#2B2F36;
+  --a1:#2A6FDB; --a2:#5C7383; --a3:#7457C9; --a4:#C9372C; --a5:#E0702F; --a6:#14929A; --a7:#B08A1E; --a8:#2E9457; --a9:#79BD8F; --a10:#A0527A;
+  --scrim:rgba(20,24,30,.35);
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* app bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1200px;margin:0 auto;padding-inline:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
+.brand{font-weight:600;font-size:17px;display:flex;align-items:baseline;gap:8px}
+.brand small{font-size:12px;font-weight:400;color:var(--muted)}
+.tabs{display:flex;gap:2px;margin-left:auto;overflow-x:auto;max-width:100%}
+.tab{border:0;background:transparent;padding:7px 12px;border-radius:6px;font-weight:500;color:var(--muted);white-space:nowrap}
+.tab:hover{color:var(--fg);background:var(--surface-2)}
+.tab[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+main.wide{max-width:none}
+main{max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:20px 96px;display:grid;gap:16px}
+
+/* generic */
+h2{font-weight:600;font-size:18px;margin:0;text-wrap:balance}
+h3{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0}
+.muted{color:var(--muted)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line-2);background:var(--surface);padding:7px 14px;border-radius:6px;font-weight:500}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.primary:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--accent)}
+.btn.danger{color:var(--danger)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.icon-btn{border:1px solid var(--line-2);background:var(--surface);width:36px;height:36px;border-radius:6px;display:grid;place-items:center;font-size:18px;line-height:1}
+.icon-btn:hover{background:var(--surface-2)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-radius:8px;background:var(--warn-soft);font-size:14px;border:1px solid #F5DDB8}
+.banner b{color:var(--warn)}
+
+/* date nav */
+.datenav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.datenav .d{font-weight:600;font-size:22px;min-width:0}
+.datenav .d::first-letter{text-transform:uppercase}
+.datenav input[type=date]{border:1px solid var(--line-2);background:var(--surface);border-radius:6px;padding:6px 8px}
+
+/* shift cards */
+.shift{overflow:hidden}
+.shift-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.shift-h .name{font-weight:600;font-size:16px}
+.phase{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;color:var(--ph-ink);white-space:nowrap}
+.phase.K{background:var(--ph-k)} .phase.H{background:var(--ph-h)} .phase.D{background:var(--ph-d)} .phase.F{background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.progress{font-size:13px;color:var(--muted)}
+.shift-h .spacer{flex:1}
+.techs{display:grid}
+.tech{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:10px 14px}
+.tech:last-child{border-bottom:0}
+.tech:hover{background:var(--surface-2)}
+.tech .nm{font-weight:500;min-width:0}
+.tech .chips{grid-column:1/2;display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.tech .hrs{grid-row:1/3;grid-column:2;display:grid;justify-items:end;gap:4px}
+.meter{width:72px;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--ok)}
+.meter.part i{background:var(--warn)}
+.status{font-size:13px}
+.status.none{color:var(--muted)} .status.part{color:var(--warn)} .status.full{color:var(--ok)} .status.over{color:var(--danger)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 7px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);font-size:13px;max-width:100%}
+.chip .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:600px;max-height:90%;overflow:auto;border-radius:12px 12px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));display:grid;gap:16px;box-shadow:0 10px 40px rgba(0,0,0,.15)}
+@media (min-width:700px){.scrim{align-items:center}.sheet{border-radius:12px}}
+.sheet-h{display:flex;gap:12px;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.sheet-h .t{font-weight:600;font-size:20px;line-height:1.2}
+.sheet-h .s{color:var(--muted);font-size:13px;margin-top:2px}
+.sheet-h .roles{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;font-size:12px;color:var(--muted)}
+.sheet-h .roles b{background:var(--accent-soft);color:var(--accent);padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.sheet-h .x{margin-left:auto}
+.sec{display:grid;gap:8px}
+.grid-btns{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.opt{border:1px solid var(--line-2);background:var(--surface);border-radius:8px;padding:10px;text-align:left;font-weight:500;display:flex;align-items:center;gap:8px;min-height:44px}
+.opt:hover{background:var(--surface-2)}
+.opt .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:5px 12px;font-weight:500;font-size:14px}
+.pill:hover{background:var(--surface-2)}
+.pill[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.reg{font-family:var(--f-mono);letter-spacing:.02em}
+.entry{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+.entry .lbl{flex:1;min-width:0;font-weight:500}
+.entry .h{font-family:var(--f-mono)}
+.inline-add{display:flex;gap:6px}
+.inline-add input{width:110px;border:1px solid var(--line-2);border-radius:999px;padding:5px 12px;background:var(--surface);text-transform:uppercase}
+.hours-in{width:84px;border:1px solid var(--line-2);border-radius:6px;padding:6px 8px;background:var(--surface);font-family:var(--f-mono)}
+.sheet-f{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom,0px));background:var(--surface);padding-block:10px 0;border-top:1px solid var(--line)}
+
+/* calendar */
+.cal-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table.cal{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+.cal th,.cal td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;text-align:center}
+.cal thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);z-index:2;font-weight:500;padding:4px 0;min-width:34px;font-size:11px}
+.cal thead th .dd{display:block;color:var(--fg);font-size:12px;font-family:var(--f-mono)}
+.cal thead th.we{background:var(--surface-2)}
+.cal .nm{position:sticky;left:0;background:var(--surface);z-index:1;text-align:left;padding:4px 10px;white-space:nowrap;font-weight:500;min-width:160px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.cal thead .nm{z-index:3}
+.cal tr.gap td{height:12px;background:var(--bg);border-right:0;border-bottom:1px solid var(--line-2)}
+.cal tr.grp td{font-size:11px;font-weight:600;color:var(--ph-ink);height:24px;border-bottom:1px solid var(--line-2)}
+.cal tr.grp td.nm{background:var(--surface-2);font-size:14px;font-weight:600}
+.cal td.K{background:var(--ph-k)} .cal td.H{background:var(--ph-h)} .cal td.D{background:var(--ph-d)} .cal td.F{background:var(--ph-f)}
+.cal tr.grp td.F{background:var(--surface-2)}
+.cal td.cell{height:30px;cursor:pointer}
+.cal td.cell:hover{outline:2px solid var(--accent);outline-offset:-2px}
+.cal .today{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent)}
+.cal thead th.today{background:var(--accent);color:var(--accent-fg)}
+.cal thead th.today .dd{color:var(--accent-fg)}
+.code{display:inline-grid;place-items:center;min-width:26px;height:20px;padding:0 3px;border-radius:4px;color:#fff;font-weight:600;font-size:11px;position:relative}
+.code.split::after{content:"";position:absolute;right:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--fg);border:1.5px solid var(--surface)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:13px;color:var(--muted);align-items:center}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px solid var(--line-2)}
+
+/* report */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.tile{padding:14px 16px;display:grid;gap:2px}
+.tile .v{font-weight:600;font-size:30px;line-height:1.1}
+.tile .l{font-size:13px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.card{padding:14px 16px;display:grid;gap:12px;min-width:0}
+.bars{display:grid;gap:8px}
+.barrow{display:grid;grid-template-columns:120px minmax(0,1fr) 104px;gap:10px;align-items:center;font-size:14px}
+.barrow .track{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.barrow .track i{display:block;height:100%;border-radius:5px}
+.barrow .v{text-align:right;font-family:var(--f-mono)}
+.tbl-wrap{overflow-x:auto}
+table.t{border-collapse:collapse;width:100%;font-size:14px}
+.t th,.t td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.t th:first-child,.t td:first-child{text-align:left}
+.t thead th{font-size:12px;color:var(--muted);font-weight:500}
+.t tfoot td{font-weight:600;border-top:1px solid var(--line-2)}
+.t td.z{color:var(--line-2)}
+.t tr.sub td{font-weight:600;color:var(--muted);text-align:left;padding-top:12px;font-size:13px}
+.range{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.range label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.range input{border:1px solid var(--line-2);border-radius:6px;padding:6px 8px;background:var(--surface)}
+
+/* settings */
+.set{padding:14px 16px;display:grid;gap:12px;min-width:0}
+.set table{border-collapse:collapse;width:100%;font-size:14px}
+.set td,.set th{padding:6px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.set th{font-size:12px;color:var(--muted);font-weight:500}
+.set input[type=text],.set input[type=number],.set input[type=date],.set input[type=time],.set select{border:1px solid var(--line-2);border-radius:6px;padding:5px 7px;background:var(--surface);width:100%;min-width:0}
+.set input[type=number]{width:70px}
+.set input[type=time]{width:auto;font-family:var(--f-mono)}
+.rolebtn{border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:3px 9px;font-size:12px;font-weight:500;margin:2px;white-space:nowrap}
+.rolebtn[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.kv label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.tt td{white-space:nowrap}
+.tt .h{font-family:var(--f-mono);color:var(--muted);font-size:13px}
+textarea{width:100%;min-height:90px;border:1px solid var(--line-2);border-radius:6px;padding:8px;background:var(--surface);font-family:var(--f-mono);font-size:12px}
+.field{flex:1;min-width:140px;border:1px solid var(--line-2);border-radius:6px;padding:7px 9px;background:var(--surface)}
+
+/* dialog + locked */
+.dscrim{position:fixed;inset:0;background:var(--scrim);z-index:50;display:grid;place-items:center;padding:16px}
+.dlg{background:var(--surface);border-radius:12px;max-width:400px;width:100%;padding:20px;display:grid;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.dlg-t{font-weight:600;font-size:18px;text-wrap:balance}
+.dlg p{margin:0;color:var(--muted)}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;flex-wrap:wrap}
+.btn.danger-fill{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
+.btn.danger-fill:hover{filter:brightness(1.05)}
+.lock{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.fx{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.fx p{margin:4px 0 0;font-size:14px}
+.sw2{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;border:1px solid var(--line-2)}
+.set select:disabled{color:var(--muted);background:var(--surface-2)}
+.set input[readonly]{background:var(--surface-2)}
+
+.set tr.sub td{font-weight:600;color:var(--muted);font-size:13px;padding-top:14px}
+.set .addrm{display:grid;gap:10px}
+.tlist{display:grid}
+.tl-sub{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:var(--surface-2);font-weight:600;font-size:14px;padding:10px 6px}
+.tl-sub:hover{background:var(--accent-soft)}
+.tl-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:8px 6px;width:100%}
+.tl-row:hover{background:var(--surface-2)}
+.tl-row .nm{font-weight:500;min-width:0}
+.tl-roles{grid-column:1;display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+.chev{grid-row:1/3;grid-column:2;color:var(--muted);font-size:20px;line-height:1}
+.rtag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.cb{width:18px;height:18px;border:1.5px solid var(--line-2);border-radius:4px;display:grid;place-items:center;font-size:12px;flex:none;color:transparent}
+.opt[aria-pressed="true"] .cb{background:var(--accent);border-color:var(--accent);color:#fff}
+.daybar{display:flex;height:12px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.daybar i{display:block;height:100%;border-right:1px solid var(--surface)}
+.daytxt{font-size:13px;color:var(--warn)} .daytxt.full{color:var(--ok)} .daytxt.over{color:var(--danger)}
+.edot{width:10px;height:10px;border-radius:50%;flex:none}
+.entry{flex-wrap:wrap}
+.stepper{display:flex;align-items:center;gap:4px}
+.icon-btn.sm{width:32px;height:32px;font-size:17px}
+.icon-btn.danger{color:var(--danger)}
+.stepper .hours-in{width:64px;text-align:center}
+.addbox{padding-top:14px;border-top:1px solid var(--line)}
+.hint{font-size:13px;color:var(--muted)}
+.entry.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{background:var(--accent-soft);box-shadow:inset 0 0 0 1.5px var(--accent)}100%{background:var(--surface-2);box-shadow:none}}
+.sub15{background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:12px;display:grid;gap:10px}
+.mini{border:1px solid var(--line-2);border-radius:6px;padding:3px 6px;background:var(--surface);font-size:13px;margin-left:4px;max-width:130px}
+.mini.miss{border-color:var(--warn);background:var(--warn-soft)}
+.entry .lbl{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.newm{margin-top:2px}
+.entry .del{margin-left:18px}
+.entry .stepper{margin-left:auto}
+.xtag{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);margin-left:6px;vertical-align:1px}
+.cal td.out{background:var(--surface);cursor:default}
+.form{display:grid;gap:12px}
+.form label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.form .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.preview{font-size:14px;padding:10px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
+.chip.auto{border-style:dashed;color:var(--muted)}
+.atag{font-size:11px;color:var(--muted);font-weight:500;padding:1px 6px;border:1px dashed var(--line-2);border-radius:999px}
+.code.auto{opacity:.4}
+.cal td.cell{border-right-color:transparent;position:relative;padding:0}
+.cal td.cell .strip{height:20px;margin:0;position:relative;display:flex;align-items:center}
+.cal td.cell .strip.rs{margin-left:3px;border-top-left-radius:5px;border-bottom-left-radius:5px}
+.cal td.cell .strip.re{margin-right:3px;border-top-right-radius:5px;border-bottom-right-radius:5px}
+.cal td.cell .strip.prev{opacity:.4}
+.cal td.cell .sl{position:absolute;left:6px;top:50%;transform:translateY(-50%);color:#fff;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1;pointer-events:none}
+.cal td.cell .strip.rs .sl{left:5px}
+.cal td.cell .sd{position:absolute;right:2px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--fg);border:1.5px solid var(--surface)}
+.cal tbody tr:not(.grp):not(.gap) td.cell:first-of-type{border-left:0}
+.t tr.grp-row{cursor:pointer;background:var(--surface-2)}
+.t tr.grp-row:hover{background:var(--accent-soft)}
+.t tr.grp-row td{font-weight:600}
+.t tr.grp-row td:first-child{white-space:nowrap}
+.chev2{display:inline-block;width:16px;color:var(--muted)}
+.t tr.in td:first-child{padding-left:26px}
+kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface);color:var(--fg)}
+/* toast */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:8px;z-index:60;font-weight:500;max-width:calc(100% - 32px)}
+@media (max-width:560px){.datenav .d{font-size:19px}.barrow{grid-template-columns:92px minmax(0,1fr) 92px}}
+@media (prefers-reduced-motion:no-preference){.sheet.anim{animation:up .16s ease-out}@keyframes up{from{transform:translateY(12px);opacity:.7}to{transform:none;opacity:1}}}
+</style>
+
+<header class="bar"><div class="bar-in">
+  <div class="brand">LMS Timer <small>Proof of concept</small></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab" data-action="tab" data-tab="fore">Føring</button>
+    <button class="tab" data-action="tab" data-tab="kal">Kalender</button>
+    <button class="tab" data-action="tab" data-tab="rap">Rapport</button>
+    <button class="tab" data-action="tab" data-tab="opp">Oppsett</button>
+  </nav>
+</div></header>
+<main id="view"></main>
+<div id="overlay" hidden></div>
+<div id="dlg" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(() => {
+'use strict';
+const LS = 'lms-timer-poc-v1';
+const VERSION = 9;
+const DAY = 864e5;
+const WD = ['søndag','mandag','tirsdag','onsdag','torsdag','fredag','lørdag'];
+const WDS = ['sø','ma','ti','on','to','fr','lø'];
+const MON = ['januar','februar','mars','april','mai','juni','juli','august','september','oktober','november','desember'];
+const PH = {K:'Kveld', H:'Helg', D:'Dag', F:'Fri'};
+const TEK = {
+ 1:["Tekniker 1-01","Tekniker 1-02","Tekniker 1-03","Tekniker 1-04","Tekniker 1-05","Tekniker 1-06","Tekniker 1-07","Tekniker 1-08","Tekniker 1-09","Tekniker 1-10","Tekniker 1-11"],
+ 2:["Tekniker 2-01","Tekniker 2-02","Tekniker 2-03","Tekniker 2-04","Tekniker 2-05","Tekniker 2-06","Tekniker 2-07","Tekniker 2-08","Tekniker 2-09","Tekniker 2-10","Tekniker 2-11","Tekniker 2-12"],
+ 3:["Tekniker 3-01","Tekniker 3-02","Tekniker 3-03","Tekniker 3-04","Tekniker 3-05","Tekniker 3-06","Tekniker 3-07","Tekniker 3-08","Tekniker 3-09","Tekniker 3-10","Tekniker 3-11"]
+};
+const AUTO_FROM = '2026-01-01';
+const SCHED = () => ({K:{mt:['14:30','23:30'], fr:['10:30','19:00']}, H:{all:['07:00','16:30']}, D:{mt:['06:00','15:00'], fr:['06:00','13:00']}, ot:9});
+
+/* ---------- dates ---------- */
+const dn = s => { const [y,m,d] = s.split('-').map(Number); return Math.round(Date.UTC(y,m-1,d)/DAY); };
+const isoOf = n => new Date(n*DAY).toISOString().slice(0,10);
+const todayIso = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const udate = s => new Date(dn(s)*DAY);
+const ddmm = s => { const d = udate(s); return String(d.getUTCDate()).padStart(2,'0')+'.'+String(d.getUTCMonth()+1).padStart(2,'0'); };
+const longDate = s => { const d = udate(s); return WD[d.getUTCDay()]+' '+d.getUTCDate()+'. '+MON[d.getUTCMonth()]; };
+const fmtH = h => (Math.round(h*10)/10).toLocaleString('nb-NO');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2,9);
+const mins = s => { const [h,m] = String(s||'0:0').split(':').map(Number); return (h||0)*60 + (m||0); };
+const span = ([a,b]) => { let d = mins(b) - mins(a); if (d < 0) d += 1440; return d/60; };
+
+/* ---------- state ---------- */
+function freshState(){
+  const techs = [];
+  for (const s of [1,2,3]) for (const n of TEK[s]) techs.push({id:uid(), name:n, shift:s, roles:[]});
+  return {
+    v:VERSION, demo:false,
+    techs,
+    shifts:[{id:1,name:'Skift 1',start:'2026-01-05'},{id:2,name:'Skift 2',start:'2026-01-12'},{id:3,name:'Skift 3',start:'2026-01-19'}],
+    days:{K:5,H:2,D:5,F:9}, sched:SCHED(),
+    roles:['Assessor','B1','B2','CRS','Independent','RGR','Hot Section','Borescope'],
+    acts:[
+      {id:'line',name:'Line',code:'L',role:'',type:'n',color:1},
+      {id:'h1500',name:'LMS',code:'L',role:'',type:'1500H',color:2},
+      {id:'ass',name:'Assessor',code:'A',role:'Assessor',type:'n',color:3},
+      {id:'hs',name:'Hot Section',code:'HS',role:'Hot Section',type:'n',color:4},
+      {id:'kurs',name:'Kurs',code:'K',role:'',type:'n',color:6},
+      {id:'mod',name:'Mod',code:'M',role:'',type:'n',color:5},
+      {id:'ferie',name:'Ferie',code:'Fe',role:'',type:'n',color:8},
+      {id:'avsp',name:'Avspasering',code:'Av',role:'',type:'n',color:9},
+      {id:'annet',name:'Annet',code:'An',role:'',type:'n',color:7}
+    ],
+    machines:[], work:['Sheet','Repair','Inspection'],
+    entries:[], noAuto:{}, autoFrom: AUTO_FROM, autoDone: null
+  };
+}
+let S;
+function load(){ try { const raw = localStorage.getItem(LS); if (raw) { S = JSON.parse(raw); return true; } } catch(e){} return false; }
+function save(){ try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){} reindex(); }
+
+let IDX = new Map();
+function reindex(){ IDX = new Map(); for (const e of S.entries){ const k = e.date+'|'+e.tech; if(!IDX.has(k)) IDX.set(k,[]); IDX.get(k).push(e);} }
+const entriesOf = (tech,date) => IDX.get(date+'|'+tech) || [];
+const act = id => S.acts.find(a => a.id === id);
+const tech = id => S.techs.find(t => t.id === id);
+const shiftOf = id => S.shifts.find(s => s.id === id);
+const cycle = () => S.days.K + S.days.H + S.days.D + S.days.F;
+function phase(shiftId, date){
+  const s = shiftOf(shiftId); const c = cycle();
+  const p = (((dn(date) - dn(s.start)) % c) + c) % c;
+  const {K,H,D} = S.days;
+  if (p < K) return {key:'K', idx:p+1, len:K};
+  if (p < K+H) return {key:'H', idx:p-K+1, len:H};
+  if (p < K+H+D) return {key:'D', idx:p-K-H+1, len:D};
+  return {key:'F', idx:p-K-H-D+1, len:S.days.F};
+}
+/* working time for a phase on a given date: Friday has its own hours for Kveld and Dag */
+function times(key, date){
+  if (key === 'F') return null;
+  const sc = S.sched[key];
+  if (key === 'H') return sc.all;
+  return udate(date).getUTCDay() === 5 ? sc.fr : sc.mt;
+}
+function workHours(key, date){ const t = times(key, date); return t ? span(t) : (+S.sched.ot || 0); }
+const timeTxt = (key, date) => { const t = times(key, date); return t ? t[0]+'–'+t[1] : 'overtid'; };
+const stdHours = (t,date) => workHours(phase(t.shift,date).key, date);
+const sumH = arr => arr.reduce((a,e) => a + (+e.hours||0), 0);
+const label = e => { const a = act(e.act); if (!a) return 'Ukjent'; return a.type === '1500H' ? (e.machine || 'LMS') + (e.work ? ' · ' + e.work : '') : a.name; };
+const color = a => 'var(--a'+((a && a.color) || 7)+')';
+const allowed = t => S.acts.filter(a => !a.role || t.roles.includes(a.role));
+const LOCKED = ['line','h1500','ass','hs','kurs','mod','ferie','avsp','annet'];
+const FIXED_ROLES = ['Assessor','B1','B2','CRS','Independent','RGR','Hot Section','Borescope'];
+const isLocked = a => LOCKED.includes(a.id);
+const roleLocked = r => FIXED_ROLES.includes(r) || S.acts.some(a => isLocked(a) && a.role === r);
+const LOCK = '<span class="lock"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 7V5a4 4 0 1 1 8 0v2h1v8H3V7h1zm2 0h4V5a2 2 0 1 0-4 0v2z"/></svg>Låst</span>';
+function ask(o){ UI.dlg = o; renderDlg(); }
+function renderDlg(){
+  const el = document.getElementById('dlg'); const d = UI.dlg;
+  if (!d){ el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = `<div class="dscrim" data-action="dlg-scrim"><div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t"><div class="dlg-t" id="dlg-t">${esc(d.title)}</div><p>${esc(d.text)}</p><div class="dlg-f"><button class="btn" data-action="dlg-cancel">Avbryt</button><button class="btn danger-fill" data-action="dlg-ok">${esc(d.ok)}</button></div></div></div>`;
+  el.querySelector('[data-action="dlg-cancel"]').focus();
+}
+function dominant(list){
+  const m = new Map(); for (const e of list) m.set(e.act, (m.get(e.act)||0) + (+e.hours||0));
+  let best = null, bv = -1; for (const [k,v] of m) if (v > bv){ best = k; bv = v; }
+  return {act: act(best), split: list.length > 1};
+}
+
+/* ---------- demo data ---------- */
+function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function loadDemo(){
+  S = freshState(); S.demo = true;
+  S.machines = [{id:uid(),name:'ONX',active:true},{id:uid(),name:'ONY',active:true},{id:uid(),name:'ONZ',active:false}];
+  const R = rng(7);
+  const roleMap = {'Tekniker 1-01':['Assessor'],'Tekniker 1-07':['Hot Section'],'Tekniker 2-01':['Assessor'],'Tekniker 2-09':['Hot Section'],'Tekniker 3-01':['Assessor','Hot Section'],'Tekniker 3-11':['Hot Section']};
+  S.techs.forEach((t, i) => { t.roles = [i % 5 === 4 ? 'B2' : 'B1', ...(roleMap[t.name] || []), ...(i % 4 === 0 ? ['CRS'] : []), ...(i % 7 === 3 ? ['Borescope'] : [])]; });
+  /* Everyone is on LMS by default (filled in by autoFill). Per shift and work period, 1–2 technicians do something else. */
+  const lastDay = dn(todayIso()) + 21; const first = dn(AUTO_FROM);
+  const workLen = S.days.K + S.days.H + S.days.D;
+  for (const sh of S.shifts){
+    const st = dn(sh.start); const c = cycle();
+    for (let p0 = st + Math.floor((first - st) / c) * c; p0 <= lastDay; p0 += c){
+      const team = S.techs.filter(t => t.shift === sh.id);
+      const k = R() < 0.5 ? 1 : 2; const used = new Set();
+      for (let j = 0; j < k; j++){
+        let t; do { t = team[Math.floor(R() * team.length)]; } while (used.has(t.id)); used.add(t.id);
+        const pool = ['line','line','kurs','mod','ferie','avsp', ...(t.roles.includes('Assessor') ? ['ass','ass'] : []), ...(t.roles.includes('Hot Section') ? ['hs','hs'] : [])];
+        const aid = pool[Math.floor(R() * pool.length)];
+        const len = aid === 'ferie' ? 5 + Math.floor(R() * 4) : 1 + Math.floor(R() * 3);
+        const off = Math.floor(R() * Math.max(1, workLen - len + 1));
+        const split = aid === 'kurs' || aid === 'ass' ? R() < 0.5 : false;
+        for (let n = p0 + off; n < p0 + Math.min(workLen, off + len); n++){
+          const d = isoOf(n); if (n < first || n > lastDay) continue;
+          const std = stdHours(t, d);
+          if (split){ const h = 4; S.entries.push({id:uid(), date:d, tech:t.id, act:aid, machine:'', work:'', hours:h}, {id:uid(), date:d, tech:t.id, act:'h1500', machine:'', work:'', hours:std - h, auto:true}); }
+          else S.entries.push({id:uid(), date:d, tech:t.id, act:aid, machine:'', work:'', hours:std});
+        }
+      }
+    }
+  }
+  save();
+}
+/* ---------- UI state ---------- */
+const UI = { oppOpen:{}, rapOpen:{}, tab:'fore', date: todayIso(), showOff:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null, confirm:null };
+function setTab(t){ UI.tab = t; render(); try{ localStorage.setItem(LS+'-tab', t);}catch(e){} }
+
+/* ---------- toast & copy ---------- */
+let toastT;
+function toast(msg){ const el = document.getElementById('toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2600); }
+function copy(text, ok){
+  const done = () => toast(ok);
+  const fallback = () => { UI.sheet = {mode:'copy', text}; renderSheet(); };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch(e){ fallback(); }
+}
+
+/* ---------- render: Føring ---------- */
+function vFore(){
+  const date = UI.date;
+  const order = [...S.shifts].sort((a,b) => (phase(a.id,date).key==='F') - (phase(b.id,date).key==='F') || a.id-b.id);
+  let h = '';
+  if (S.demo) h += `<div class="banner"><b>Eksempeldata.</b> Timer, roller og maskiner er fylt inn for å vise hvordan det fungerer. <button class="btn sm" data-action="clear-demo">Tøm eksempeldata</button></div>`;
+  h += `<div class="datenav">
+    <button class="icon-btn" data-action="day" data-d="-1" aria-label="Forrige dag">‹</button>
+    <button class="icon-btn" data-action="day" data-d="1" aria-label="Neste dag">›</button>
+    <div class="d">${esc(longDate(date))}</div>
+    <span style="flex:1"></span>
+    ${date !== todayIso() ? '<button class="btn sm" data-action="today">I dag</button>' : ''}
+    <input type="date" id="f-date" value="${date}" aria-label="Velg dato">
+  </div>`;
+  for (const s of order){
+    const ph = phase(s.id, date);
+    const ts = S.techs.filter(t => t.shift === s.id && activeOn(t, date));
+    const done = ts.filter(t => sumH(entriesOf(t.id,date)) >= stdHours(t,date)).length;
+    const off = ph.key === 'F';
+    h += `<section class="panel shift">
+      <div class="shift-h">
+        <span class="name">${esc(s.name)}</span>
+        <span class="phase ${ph.key}">${PH[ph.key]} ${ph.idx}/${ph.len}${off ? '' : ' · ' + timeTxt(ph.key,date) + ' · ' + fmtH(workHours(ph.key,date)) + ' t'}</span>
+        ${off ? '' : `<span class="progress num">${done}/${ts.length} ført</span>`}
+        <span class="spacer"></span>
+        ${off ? `<button class="btn sm" data-action="toggle-off" data-s="${s.id}">${UI.showOff[s.id] ? 'Skjul' : 'Vis for overtid'}</button>`
+              : `<button class="btn sm" data-action="extra" data-s="${s.id}">+ Ekstra personell</button><button class="btn sm" data-action="bulk" data-s="${s.id}">Sett alle…</button>`}
+      </div>`;
+    if (!off || UI.showOff[s.id]) {
+      h += `<div class="techs">`;
+      for (const t of ts){
+        const list = entriesOf(t.id, date); const sum = sumH(list); const std = stdHours(t,date);
+        const st = sum === 0 ? 'none' : sum < std ? 'part' : sum > std ? 'over' : 'full';
+        const stTxt = sum === 0 ? (off ? 'Fri' : dn(date) > dn(todayIso()) ? 'Standard' : 'Ikke ført') : `${fmtH(sum)} / ${fmtH(std)} t`;
+        h += `<button class="tech" data-action="open" data-t="${t.id}">
+          <span class="nm">${esc(t.name)}${xtag(t)}</span>
+          <span class="hrs"><span class="status ${st} num">${stTxt}</span>${sum ? `<span class="meter ${st==='part'?'part':''}"><i style="width:${Math.min(100,sum/std*100)}%"></i></span>` : ''}</span>
+          <span class="chips">${!list.length && !off && dn(date) > dn(todayIso()) && workDay(t, date) && !S.noAuto[date + '|' + t.id] ? `<span class="chip auto"><i class="dot" style="background:${color(act('h1500'))}"></i><span>LMS · standard</span><b class="num">${fmtH(std)}</b></span>` : ''}${list.map(e => `<span class="chip ${e.auto ? 'auto' : ''}"><i class="dot" style="background:${color(act(e.act))}"></i><span>${esc(label(e))}</span><b class="num">${fmtH(e.hours)}</b></span>`).join('')}</span>
+        </button>`;
+      }
+      h += `</div>`;
+    }
+    h += `</section>`;
+  }
+  return h;
+}
+
+/* ---------- sheet ---------- */
+function openSheet(techId, date = UI.date){
+  if (!S.entries.some(e => e.tech === techId && e.date === date)){ recomputeAuto(techId, date); save(); }
+  const t = tech(techId); const rem = Math.max(0, stdHours(t,date) - sumH(manualOf(t.id,date)));
+  UI.sheet = {mode:'tech', tech:techId, date, act:null, machine:null, work:null, hours: rem > 0 ? rem : 1, newM:''};
+  renderSheet();
+}
+function openBulk(shiftId){
+  const ts = S.techs.filter(t => t.shift === shiftId && activeOn(t, UI.date) && manualOf(t.id,UI.date).length === 0);
+  UI.sheet = {mode:'bulk', shift:shiftId, date:UI.date, act:null, machine:null, work:null, count:ts.length};
+  renderSheet();
+}
+function last1500(){ return {machine:'', work:''}; }  /* LMS starts as 'Ingen maskin'; machine is set by hand */
+function entryLabel(e){
+  const a = act(e.act); if (!a || a.type !== '1500H') return esc(label(e));
+  const ms = S.machines.filter(m => m.active || m.name === e.machine).map(m => m.name);
+  return `LMS <select class="mini" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select>`;
+}
+const activeOn = (t, date) => !t.extra || (date >= t.extra.from && date <= t.extra.until);
+const xtag = t => t.extra ? '<span class="xtag">Ekstra</span>' : '';
+function extraUntil(shift, from, days){
+  let n = dn(from), c = 0;
+  for (let g = 0; g < 400; g++, n++){ if (phase(shift, isoOf(n)).key !== 'F'){ c++; if (c >= days) return isoOf(n); } }
+  return isoOf(n);
+}
+function openExtra(shift, date){ UI.sheet = {mode:'extra', name:'', shift: shift || 1, from: date || UI.date, days: 1}; renderSheet(); setTimeout(() => document.getElementById('ex-name')?.focus(), 0); }
+function extraPreview(sh){
+  const d = Math.max(1, Math.round(+sh.days || 1));
+  const u = extraUntil(+sh.shift, sh.from, d);
+  return `${d} skiftdag${d === 1 ? '' : 'er'} på ${esc(shiftOf(+sh.shift).name)}: ${esc(ddmm(sh.from))} – ${esc(ddmm(u))}`;
+}
+const workDay = (t, date) => activeOn(t, date) && phase(t.shift, date).key !== 'F';
+const manualOf = (techId, date) => entriesOf(techId, date).filter(e => !e.auto);
+/* LMS standard: fills whatever is left of the working day */
+function recomputeAuto(techId, date){
+  const t = tech(techId); if (!t) return;
+  const list = S.entries.filter(e => e.tech === techId && e.date === date);
+  const autos = list.filter(e => e.auto); const keep = autos[0];
+  if (autos.length > 1) S.entries = S.entries.filter(e => !autos.slice(1).includes(e));
+  const rest = Math.round((stdHours(t, date) - sumH(list.filter(e => !e.auto))) * 2) / 2;
+  if (rest > 0 && !S.noAuto[date + '|' + techId] && workDay(t, date)){
+    if (keep) keep.hours = rest;
+    else { const d0 = last1500(techId); S.entries.push({id:uid(), date, tech:techId, act:'h1500', machine:d0.machine, work:d0.work, hours:rest, auto:true}); }
+  } else if (keep) S.entries = S.entries.filter(e => e !== keep);
+}
+function autoFill(){
+  reindex();
+  const today = dn(todayIso());
+  const start = Math.max(dn(S.autoFrom || AUTO_FROM), S.autoDone ? dn(S.autoDone) + 1 : 0);
+  if (start > today) return;
+  const active = new Set(S.machines.filter(m => m.active).map(m => m.name));
+  const single = active.size === 1 ? [...active][0] : '';
+  const lastM = {};
+  for (const e of S.entries.filter(e => e.act === 'h1500' && e.machine && dn(e.date) < start).sort((x, y) => x.date.localeCompare(y.date))) lastM[e.tech] = {machine: e.machine, work: e.work || ''};
+  for (let n = start; n <= today; n++){ const d = isoOf(n);
+    for (const t of S.techs){
+      const ex = entriesOf(t.id, d);
+      if (ex.length){ for (const e of ex) if (e.act === 'h1500' && e.machine) lastM[t.id] = {machine: e.machine, work: e.work || ''}; continue; }
+      if (!workDay(t, d) || S.noAuto[d + '|' + t.id]) continue;
+      const lm = lastM[t.id];
+      S.entries.push({id:uid(), date:d, tech:t.id, act:'h1500', machine:'', work:'', hours: stdHours(t, d), auto:true});
+    }
+  }
+  S.autoDone = isoOf(today); save();
+}
+function resetHours(sh){ const t = tech(sh.tech); const rem = stdHours(t, sh.date) - sumH(manualOf(t.id, sh.date)); sh.hours = rem > 0 ? rem : 1; }
+function addEntry(sh){
+  const a = act(sh.act); const hrs = +sh.hours;
+  if (!a) return;
+  if (!(hrs > 0)){ toast('Velg antall timer først'); return; }
+  const same = manualOf(sh.tech, sh.date).find(e => e.act === a.id && (a.type !== '1500H' || (sh.machine && sh.work && e.machine === sh.machine && e.work === sh.work)));
+  let id;
+  if (same){ same.hours = +same.hours + hrs; id = same.id; }
+  else { id = uid(); S.entries.push({id, date:sh.date, tech:sh.tech, act:a.id, machine:a.type==='1500H'?sh.machine:'', work:a.type==='1500H'?sh.work:'', hours:hrs}); }
+  toast((a.type === '1500H' ? (sh.machine || 'LMS') + (sh.work ? ' · ' + sh.work : '') : a.name) + (same ? ' · +' : ' · ') + fmtH(hrs) + ' t');
+  UI.flash = id; sh.toTop = true;
+  recomputeAuto(sh.tech, sh.date);
+  save(); sh.act = null; sh.machine = null; sh.work = null; resetHours(sh); renderSheet(); render();
+}
+let pendingSheet = false, pointerIsDown = false;
+function flushSheet(){ if (!pendingSheet) return; pendingSheet = false; if (UI.sheet) renderSheet(); render(); }
+function deferSheet(){ pendingSheet = true; if (!pointerIsDown) setTimeout(flushSheet, 0); }
+document.addEventListener('pointerdown', () => { pointerIsDown = true; }, true);
+document.addEventListener('pointerup', () => { pointerIsDown = false; if (pendingSheet) setTimeout(flushSheet, 0); }, true);
+document.addEventListener('pointercancel', () => { pointerIsDown = false; if (pendingSheet) setTimeout(flushSheet, 0); }, true);
+function setEntryHours(id, h, deferred){
+  const e = S.entries.find(x => x.id === id); if (!e) return;
+  e.hours = Math.min(24, Math.max(0.5, Math.round((+String(h).replace(',', '.') || 0) * 2) / 2));
+  if (e.auto){ e.auto = false; S.noAuto[e.date + '|' + e.tech] = true; }
+  recomputeAuto(e.tech, e.date); save();
+  if (UI.sheet) resetHours(UI.sheet);
+  if (deferred) deferSheet(); else { if (UI.sheet) renderSheet(); render(); }
+}
+const ready1500 = sh => sh.mode === 'tech' && act(sh.act)?.type === '1500H' && sh.machine && sh.work;
+function closeSheet(){ UI.sheet = null; renderSheet(); render(); }
+function actPicker(acts, sel){
+  return `<div class="grid-btns">${acts.map(a => `<button class="opt" data-action="pick-act" data-a="${a.id}" aria-pressed="${sel===a.id}"><i class="dot" style="background:${color(a)}"></i>${esc(a.name)}</button>`).join('')}</div>`;
+}
+function h1500Picker(sh){
+  const ms = S.machines.filter(m => m.active);
+  return `<div class="sec"><h3>Maskin</h3><div class="pills">
+      ${ms.map(m => `<button class="pill reg" data-action="pick-m" data-m="${esc(m.name)}" aria-pressed="${sh.machine===m.name}">${esc(m.name)}</button>`).join('')}
+      <span class="inline-add"><input id="sh-newm" type="text" placeholder="Ny maskin" value="${esc(sh.newM||'')}" aria-label="Ny maskin"><button class="pill" data-action="add-m">Legg til</button></span>
+    </div>${ms.length ? '' : '<div class="muted" style="font-size:13px">Ingen aktive maskiner ennå. Skriv registreringen over.</div>'}</div>
+    <div class="sec"><h3>Arbeid</h3><div class="pills">${S.work.map(w => `<button class="pill" data-action="pick-w" data-w="${esc(w)}" aria-pressed="${sh.work===w}">${esc(w)}</button>`).join('')}</div></div>`;
+}
+function renderSheet(){
+  const ov = document.getElementById('overlay');
+  const sh = UI.sheet;
+  if (!sh){ ov.hidden = true; ov.innerHTML = ''; return; }
+  ov.hidden = false;
+  let body = '';
+  if (sh.mode === 'copy'){
+    body = `<div class="sheet-h"><div><div class="t">Kopier</div><div class="s">Marker teksten og kopier den manuelt.</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      <div class="sec"><textarea id="copy-txt" readonly>${esc(sh.text)}</textarea></div>`;
+  } else if (sh.mode === 'bulk'){
+    const s = shiftOf(sh.shift); const ph = phase(s.id, sh.date);
+    const a = act(sh.act); const ok = a && (a.type !== '1500H' || (sh.machine && sh.work)) && sh.count > 0;
+    body = `<div class="sheet-h"><div><div class="t">Sett alle · ${esc(s.name)}</div><div class="s">${esc(longDate(sh.date))} · ${PH[ph.key]} ${timeTxt(ph.key,sh.date)} · ${sh.count} teknikere med bare LMS standard får hel dag (${fmtH(workHours(ph.key,sh.date))} t)</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      <div class="sec"><h3>Aktivitet</h3>${actPicker(S.acts.filter(x => !x.role), sh.act)}</div>
+      ${a && a.type === '1500H' ? h1500Picker(sh) : ''}
+      <div class="sheet-f"><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="bulk-apply" ${ok?'':'disabled'}>Sett ${sh.count} teknikere</button></div>`;
+  } else if (sh.mode === 'extra'){
+    body = `<div class="sheet-h"><div><div class="t">Ekstra personell</div><div class="s">Vises på skiftet i perioden. Timer føres som vanlig.</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      <div class="form">
+        <label>Navn<input type="text" id="ex-name" class="field" value="${esc(sh.name)}" placeholder="Fullt navn" autocomplete="off"></label>
+        <div class="two">
+          <label>Skift<select id="ex-shift" class="field">${S.shifts.map(x => `<option value="${x.id}" ${+sh.shift === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
+          <label>Fra dato<input type="date" id="ex-from" class="field" value="${sh.from}"></label>
+          <label>Antall skiftdager<input type="text" inputmode="numeric" id="ex-days" class="field" value="${esc(sh.days)}"></label>
+        </div>
+        <div class="preview" id="ex-prev">${extraPreview(sh)}</div>
+      </div>
+      <div class="sheet-f"><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="extra-save">Legg til</button></div>`;
+  } else if (sh.mode === 'roles'){
+    const t = tech(sh.tech);
+    body = `<div class="sheet-h"><div><div class="t">${esc(t.name)}</div><div class="s">${esc(shiftOf(t.shift).name)} · ${t.roles.length} ${t.roles.length === 1 ? 'rolle' : 'roller'} valgt</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      <div class="sec"><h3>Roller</h3><div class="grid-btns">${S.roles.map(r => `<button class="opt" data-action="role" data-t="${t.id}" data-r="${esc(r)}" aria-pressed="${t.roles.includes(r)}"><span class="cb" aria-hidden="true">✓</span>${esc(r)}</button>`).join('')}</div></div>
+      <div class="muted" style="font-size:13px">Rollene styrer hvilke aktiviteter teknikeren kan føres på.</div>
+      <div class="sheet-f"><button class="btn primary" data-action="close">Ferdig</button></div>`;
+  } else {
+    const t = tech(sh.tech); const list = entriesOf(t.id, sh.date); const std = stdHours(t, sh.date);
+    const sum = sumH(list); const rem = std - sum; const ph = phase(t.shift, sh.date);
+    const a = act(sh.act); const scale = Math.max(std, sum) || 1;
+    const remTxt = rem > 0 ? `${fmtH(rem)} t igjen` : rem < 0 ? `${fmtH(-rem)} t over` : 'Dagen er full';
+    const hrsOpts = [...new Set([rem > 0 ? rem : null, 1, 2, 3, 4, 6].filter(x => x && (rem <= 0 || x <= rem)))];
+    body = `<div class="sheet-h"><div>
+        <div class="t">${esc(t.name)}</div>
+        <div class="s">${esc(longDate(sh.date))} · ${esc(shiftOf(t.shift).name)} · ${PH[ph.key]} ${timeTxt(ph.key,sh.date)}</div>
+        <div class="roles">${t.roles.length ? 'Roller: ' + t.roles.map(r => `<b>${esc(r)}</b>`).join('') : 'Ingen roller · settes i Oppsett'}</div>
+      </div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      <div class="sec"><div class="row" style="justify-content:space-between"><h3>Dagen</h3><span class="num daytxt ${rem < 0 ? 'over' : rem === 0 ? 'full' : ''}">${fmtH(sum)} / ${fmtH(std)} t · ${remTxt}</span></div>
+        <div class="daybar">${list.map(e => `<i style="width:${(+e.hours||0)/scale*100}%;background:${color(act(e.act))}" title="${esc(label(e))} ${fmtH(e.hours)} t"></i>`).join('')}</div>
+        ${list.length ? list.map(e => `<div class="entry ${e.id === UI.flash ? 'flash' : ''}"><i class="edot" style="background:${color(act(e.act))}"></i><span class="lbl">${entryLabel(e)}${e.auto ? '<span class="atag">standard</span>' : ''}</span>
+          <span class="stepper"><button class="icon-btn sm" data-action="step" data-e="${e.id}" data-d="-0.5" aria-label="En halv time mindre">−</button><input class="hours-in" type="text" inputmode="decimal" id="eh-${e.id}" data-eh="${e.id}" value="${fmtH(e.hours)}" aria-label="Timer ${esc(label(e))}"><button class="icon-btn sm" data-action="step" data-e="${e.id}" data-d="0.5" aria-label="En halv time mer">+</button></span>
+          <button class="icon-btn sm danger del" data-action="del" data-e="${e.id}" aria-label="Slett ${esc(label(e))}">×</button></div>`).join('') : '<div class="hint">Ingenting ført ennå.</div>'}
+        ${list.some(e => act(e.act)?.type === '1500H') ? `<div class="row newm"><input type="text" id="sh-newm" class="field" placeholder="Ny maskin, f.eks. ONX" value="${esc(sh.newM || '')}" aria-label="Ny maskin"><button class="btn sm" data-action="add-m">Legg til maskin</button></div>` : ''}
+      </div>
+      <div class="sec addbox"><h3>Legg til aktivitet</h3>
+        ${actPicker(allowed(t), sh.act)}
+        <div class="hint">${(() => { const rm = std - sumH(list.filter(e => !e.auto)); return rm > 0 ? `Legges til med ${fmtH(rm)} t.` : 'Dagen er full. Ny aktivitet legges til med 1 t.'; })()} LMS standard fyller automatisk resten av dagen. Juster timene på raden.</div>
+      </div>
+      <div class="sheet-f"><button class="btn primary" data-action="close">Ferdig</button></div>`;
+  }
+  const prev = ov.querySelector('.sheet'); const prevScroll = prev ? prev.scrollTop : 0;
+  ov.innerHTML = `<div class="scrim" data-action="scrim"><div class="sheet${prev ? '' : ' anim'}" role="dialog" aria-modal="true">${body}</div></div>`;
+  ov.querySelector('.sheet').scrollTop = sh.toTop ? 0 : prevScroll;
+  sh.toTop = false; UI.flash = null;
+  if (sh.mode === 'copy'){ const ta = document.getElementById('copy-txt'); ta.focus(); ta.select(); }
+}
+
+/* ---------- render: Kalender ---------- */
+function vKal(){
+  const [y,m] = UI.cal.split('-').map(Number);
+  const first = dn(`${y}-${String(m).padStart(2,'0')}-01`);
+  const nd = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const days = Array.from({length:nd}, (_,i) => isoOf(first+i));
+  const today = todayIso();
+  const cols = days.length + 1;
+  let h = `<div class="row" style="justify-content:space-between">
+     <div class="row"><button class="icon-btn" data-action="cal" data-d="-1" aria-label="Forrige måned">‹</button><button class="icon-btn" data-action="cal" data-d="1" aria-label="Neste måned">›</button><h2>${MON[m-1]} ${y}</h2><button class="btn sm" data-action="extra" data-from="${days.includes(today) ? today : days[0]}">+ Ekstra personell</button></div>
+     <div class="legend">
+     ${S.acts.map(a => `<span><i class="sw" style="background:${color(a)};border-color:transparent"></i>${esc(a.name)}</span>`).join('')}<span>● = delt dag</span></div></div>`;
+  h += `<div class="cal-wrap"><table class="cal"><thead><tr><th class="nm">Tekniker</th>${days.map(d => { const u = udate(d); const wd = u.getUTCDay(); return `<th class="${d===today?'today':''} ${wd===0||wd===6?'we':''}"><span class="dd">${u.getUTCDate()}</span>${WDS[wd]}</th>`; }).join('')}</tr></thead><tbody>`;
+  S.shifts.forEach((s, i) => {
+    if (i) h += `<tr class="gap"><td class="nm"></td><td colspan="${cols-1}"></td></tr>`;
+    h += `<tr class="grp"><td class="nm">${esc(s.name)}</td>${days.map(d => { const p = phase(s.id,d).key; return `<td class="${p} ${d===today?'today':''}">${p==='F'?'':p}</td>`; }).join('')}</tr>`;
+    for (const t of S.techs.filter(t => t.shift === s.id && (!t.extra || (t.extra.until >= days[0] && t.extra.from <= days[days.length-1])))){
+      h += `<tr><td class="nm" title="${esc(t.name)}">${esc(t.name)}${xtag(t)}</td>`;
+      const info = days.map(d => {
+        if (!activeOn(t, d)) return {d, out:true};
+        const p = phase(s.id, d).key; const list = entriesOf(t.id, d);
+        const o = {d, p, key:'', bg:'', lab:'', short:'', prev:false, split:false,
+          ttl: list.length ? list.map(e => label(e) + ' ' + fmtH(e.hours) + ' t').join(', ') : (p === 'F' ? 'Fri' : PH[p] + ' ' + timeTxt(p, d))};
+        if (list.length){
+          const {act:a0} = dominant(list); const tot = sumH(list) || 1;
+          if (list.length > 1){
+            let x = 0; o.bg = 'linear-gradient(90deg,' + list.map(e => { const c = color(act(e.act)); const f = x; x += (+e.hours || 0) / tot * 100; return `${c} ${f}% ${x}%`; }).join(',') + ')';
+            o.key = 'split|' + d; o.split = true; o.short = '';
+          } else {
+            const e = list[0]; const is15 = a0 && a0.type === '1500H';
+            o.bg = color(a0); o.key = (a0 ? a0.id : '?') + (is15 ? '|' + (e.machine || '') : '');
+            o.lab = is15 ? (e.machine || 'LMS') : (a0 ? a0.name : '?');
+            o.short = is15 ? (e.machine || 'LMS') : (a0 ? a0.code : '?');
+          }
+        } else if (d > today && p !== 'F' && !S.noAuto[d + '|' + t.id]){
+          o.bg = color(act('h1500')); o.key = 'prev'; o.prev = true; o.lab = 'LMS'; o.short = 'LMS';
+        }
+        return o;
+      });
+      info.forEach((o, i) => {
+        if (o.out){ h += '<td class="out"></td>'; return; }
+        let strip = '';
+        if (o.key){
+          const st = i === 0 || info[i-1].key !== o.key, en = i === info.length - 1 || info[i+1].key !== o.key;
+          let len = 1; if (st) while (i + len < info.length && info[i+len].key === o.key) len++;
+          const txt = st ? (len > 1 ? o.lab : o.short) : '';
+          strip = `<div class="strip${st ? ' rs' : ''}${en ? ' re' : ''}${o.prev ? ' prev' : ''}" style="background:${o.bg}">${txt ? `<span class="sl" style="max-width:calc(${len} * 100% - 8px)">${esc(txt)}</span>` : ''}${o.split ? '<i class="sd"></i>' : ''}</div>`;
+        }
+        h += `<td class="cell ${o.p} ${o.d === today ? 'today' : ''}" data-action="cell" data-t="${t.id}" data-d="${o.d}" title="${esc(t.name + ' · ' + ddmm(o.d) + ' · ' + o.ttl)}">${strip}</td>`;
+      });
+      h += `</tr>`;
+    }
+  });
+  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den. Hurtigtast: hold musepekeren over en LMS-dag og trykk <kbd>M</kbd> for å bytte maskin, <kbd>A</kbd> for å bytte arbeid (Shift baklengs).</div>`;
+  return h;
+}
+
+/* ---------- render: Rapport ---------- */
+function vRap(){
+  const today = todayIso();
+  if (!UI.from){ UI.from = today.slice(0,8)+'01'; UI.to = today; }
+  const f = dn(UI.from), t = dn(UI.to);
+  const list = S.entries.filter(e => { const n = dn(e.date); return n >= f && n <= t; });
+  const total = sumH(list);
+  const byAct = new Map(S.acts.map(a => [a.id,0])); for (const e of list) byAct.set(e.act, (byAct.get(e.act)||0) + +e.hours);
+  const h15 = byAct.get('h1500') || 0;
+  let missing = 0;
+  for (let n = f; n <= Math.min(t, dn(today)); n++){ const d = isoOf(n); for (const x of S.techs) if (activeOn(x, d) && phase(x.shift,d).key !== 'F' && !entriesOf(x.id,d).length) missing++; }
+  const max = Math.max(1, ...byAct.values());
+  let h = `<div class="row" style="justify-content:space-between;align-items:end">
+    <div class="range">
+      <label>Fra<input type="date" id="r-from" value="${UI.from}"></label>
+      <label>Til<input type="date" id="r-to" value="${UI.to}"></label>
+      <button class="btn sm" data-action="range" data-r="period">Denne skiftperioden</button>
+      <button class="btn sm" data-action="range" data-r="month">Denne måneden</button>
+      <button class="btn sm" data-action="range" data-r="year">I år</button>
+    </div>
+    <button class="btn primary" data-action="csv">Kopier som CSV</button></div>`;
+  h += `<div class="tiles">
+    <div class="panel tile"><span class="v num">${fmtH(total)}</span><span class="l">Timer totalt</span></div>
+    <div class="panel tile"><span class="v num">${fmtH(h15)}</span><span class="l">Timer LMS · ${total ? Math.round(h15/total*100) : 0} %</span></div>
+  </div>`;
+  h += `<div class="cols"><div class="panel card"><h3>Per aktivitet</h3><div class="bars">${S.acts.map(a => { const v = byAct.get(a.id)||0; return `<div class="barrow"><span>${esc(a.name)}</span><span class="track"><i style="width:${v/max*100}%;background:${color(a)}"></i></span><span class="v">${fmtH(v)} t <span class="muted">${total ? Math.round(v / total * 100) : 0} %</span></span></div>`; }).join('')}</div></div>`;
+  const mset = [...new Set([...S.machines.map(m => m.name), ...list.filter(e => e.act==='h1500').map(e => e.machine)])].filter(Boolean);
+  const mm = (m,w) => sumH(list.filter(e => e.act==='h1500' && e.machine===m && (!w || e.work===w)));
+  h += `<div class="panel card"><h3>LMS per maskin</h3><div class="tbl-wrap"><table class="t"><thead><tr><th>Maskin</th>${S.work.map(w => `<th>${esc(w)}</th>`).join('')}<th>Sum</th></tr></thead><tbody>
+    ${mset.length ? mset.map(m => `<tr><td class="reg">${esc(m)}</td>${S.work.map(w => { const v = mm(m,w); return `<td class="num ${v?'':'z'}">${v?fmtH(v):'–'}</td>`; }).join('')}<td class="num"><b>${fmtH(mm(m))}</b></td></tr>`).join('') : ''}
+    ${(() => { const nm = list.filter(e => e.act === 'h1500' && !e.machine); const v = sumH(nm); return `<tr><td class="muted">Ingen maskin</td>${S.work.map(w => { const x = sumH(nm.filter(e => e.work === w)); return `<td class="num ${x?'':'z'}">${x?fmtH(x):'–'}</td>`; }).join('')}<td class="num"><b>${fmtH(v)}</b></td></tr>`; })()}
+    </tbody><tfoot><tr><td>Sum</td>${S.work.map(w => `<td class="num">${fmtH(sumH(list.filter(e => e.act==='h1500' && e.work===w)))}</td>`).join('')}<td class="num">${fmtH(h15)}</td></tr></tfoot></table></div>
+    <h3>Per skift</h3><div class="tbl-wrap"><table class="t"><tbody>${S.shifts.map(s => { const ids = new Set(S.techs.filter(x => x.shift===s.id).map(x => x.id)); return `<tr><td>${esc(s.name)}</td><td class="num">${fmtH(sumH(list.filter(e => ids.has(e.tech))))} t</td></tr>`; }).join('')}</tbody></table></div></div></div>`;
+  h += `<div class="panel card"><h3>Per tekniker</h3><div class="tbl-wrap"><table class="t"><thead><tr><th>Tekniker</th>${S.acts.map(a => `<th>${esc(a.name)}</th>`).join('')}<th>Sum</th></tr></thead><tbody>`;
+  for (const s of S.shifts){
+    const xs = S.techs.filter(x => x.shift === s.id && (!x.extra || list.some(e => e.tech === x.id) || (dn(x.extra.until) >= f && dn(x.extra.from) <= t)));
+    const sids = new Set(xs.map(x => x.id)); const sl = list.filter(e => sids.has(e.tech)); const open = !!UI.rapOpen[s.id];
+    h += `<tr class="grp-row" data-action="rap-toggle" data-s="${s.id}" aria-expanded="${open}"><td><span class="chev2">${open ? '▾' : '▸'}</span>${esc(s.name)} <span class="muted">· ${xs.length}</span></td>${S.acts.map(a => { const v = sumH(sl.filter(e => e.act === a.id)); return `<td class="num ${v?'':'z'}">${v?fmtH(v):'–'}</td>`; }).join('')}<td class="num"><b>${fmtH(sumH(sl))}</b></td></tr>`;
+    if (!open) continue;
+    for (const x of xs){
+      const mine = list.filter(e => e.tech === x.id);
+      h += `<tr class="in"><td>${esc(x.name)}${xtag(x)}</td>${S.acts.map(a => { const v = sumH(mine.filter(e => e.act===a.id)); return `<td class="num ${v?'':'z'}">${v?fmtH(v):'–'}</td>`; }).join('')}<td class="num"><b>${fmtH(sumH(mine))}</b></td></tr>`;
+    }
+  }
+  h += `</tbody><tfoot><tr><td>Sum</td>${S.acts.map(a => `<td class="num">${fmtH(byAct.get(a.id)||0)}</td>`).join('')}<td class="num">${fmtH(total)}</td></tr></tfoot></table></div></div>`;
+  return h;
+}
+
+/* ---------- render: Oppsett ---------- */
+function timeIn(k, w, i){ const v = S.sched[k][w][i]; return `<input type="time" id="tm-${k}-${w}-${i}" data-field="sched" data-k="${k}" data-w="${w}" data-i="${i}" value="${v}">`; }
+function vOpp(){
+  let h = `<div class="banner"><b>Proof of concept.</b> Alt lagres bare i denne nettleseren. En ekte versjon trenger en felles database for de tre skiftlederne.</div>`;
+  h += `<div class="cols">`;
+  h += `<div style="display:grid;gap:16px;align-content:start;min-width:0">`;
+  h += `<section class="panel set addrm"><h2>Legg til eller fjern tekniker</h2>
+    <div class="row"><input type="text" id="new-tech" class="field" placeholder="Navn på ny tekniker"><select id="new-tech-s" class="field" style="flex:0 0 auto;min-width:0">${S.shifts.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select><button class="btn" data-action="add-tech">Legg til</button></div>
+    <div class="row"><select id="rm-tech" class="field"><option value="">Velg tekniker å fjerne</option>${S.shifts.map(x => `<optgroup label="${esc(x.name)}">${S.techs.filter(t => t.shift === x.id && !t.extra).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</optgroup>`).join('')}</select><button class="btn danger" data-action="rm-tech">Fjern</button></div></section>`;
+  h += `<section class="panel set"><h2>Teknikere og roller</h2><div class="muted" style="font-size:13px">Trykk på en tekniker for å sette roller.</div><div class="tlist">
+    ${S.shifts.map(x => { const n = S.techs.filter(t => t.shift === x.id && !t.extra).length; const open = !!UI.oppOpen[x.id]; return `<button class="tl-sub" data-action="opp-toggle" data-s="${x.id}" aria-expanded="${open}"><span class="chev2">${open ? '▾' : '▸'}</span>${esc(x.name)} <span class="muted">· ${n}</span></button>` + (!open ? '' : S.techs.filter(t => t.shift === x.id && !t.extra).map(t => `<button class="tl-row" data-action="roles" data-t="${t.id}"><span class="nm">${esc(t.name)}</span><span class="tl-roles">${t.roles.length ? t.roles.map(r => `<span class="rtag">${esc(r)}</span>`).join('') : '<span class="muted" style="font-size:12px">Ingen roller</span>'}</span><span class="chev" aria-hidden="true">›</span></button>`).join('')); }).join('')}
+    </div></section></div>`;
+  h += `<div style="display:grid;gap:16px;align-content:start;min-width:0">`;
+  h += `<section class="panel set"><h2>Egne aktiviteter</h2>${S.acts.some(a => !isLocked(a)) ? '' : '<div class="hint">Ingen egne aktiviteter. De faste aktivitetene kan ikke endres.</div>'}<table><thead><tr><th>Navn</th><th>Kode</th><th>Krever rolle</th><th></th></tr></thead><tbody>
+    ${S.acts.filter(a => !isLocked(a)).map(a => `<tr><td><div class="row" style="flex-wrap:nowrap"><i style="width:12px;height:12px;border-radius:2px;flex:none;background:${color(a)}"></i><input type="text" id="an-${a.id}" data-field="aname" data-a="${a.id}" value="${esc(a.name)}" ${isLocked(a)?'readonly':''}></div></td>
+      <td><input type="text" id="ac-${a.id}" data-field="acode" data-a="${a.id}" value="${esc(a.code)}" maxlength="3" style="width:56px"></td>
+      <td><select id="ar-${a.id}" data-field="arole" data-a="${a.id}" ${isLocked(a)?'disabled':''}><option value="">Alle</option>${S.roles.map(r => `<option ${a.role===r?'selected':''}>${esc(r)}</option>`).join('')}</select></td>
+      <td>${isLocked(a) ? LOCK : `<button class="btn sm danger" data-action="del-act" data-a="${a.id}">Fjern</button>`}</td></tr>`).join('')}
+    </tbody></table><div class="row"><input type="text" id="new-act" class="field" placeholder="Ny aktivitet"><button class="btn" data-action="add-act">Legg til</button></div></section>`;
+  h += `<section class="panel set"><h2>Maskiner (LMS)</h2><table><thead><tr><th>Maskin</th><th>Status</th><th></th></tr></thead><tbody>
+    ${S.machines.length ? S.machines.map(m => `<tr><td class="reg">${esc(m.name)}</td><td><button class="rolebtn" data-action="m-active" data-m="${m.id}" aria-pressed="${m.active}">${m.active?'I dokk':'Ferdig'}</button></td><td><button class="btn sm danger" data-action="del-m" data-m="${m.id}">Fjern</button></td></tr>`).join('') : '<tr><td colspan="3" class="muted">Ingen maskiner. Legg til her eller direkte når du fører LMS.</td></tr>'}
+    </tbody></table><div class="muted" style="font-size:13px">Ferdige maskiner vises ikke ved føring, men timene blir i rapporten.</div>
+    <div class="row"><input type="text" id="new-m" class="field" placeholder="F.eks. ONX"><button class="btn" data-action="add-m2">Legg til</button></div></section>`;
+  h += `<section class="panel set"><h2>Roller og LMS-arbeid</h2>
+    <div class="pills">${S.roles.map(r => `<span class="chip"><span>${esc(r)}</span>${roleLocked(r) ? '' : `<button class="btn sm ghost" data-action="del-role" data-r="${esc(r)}" aria-label="Fjern rolle">×</button>`}</span>`).join('')}</div>
+    <div class="row"><input type="text" id="new-role" class="field" placeholder="Ny rolle"><button class="btn" data-action="add-role">Legg til rolle</button></div>
+    <div class="pills">${S.work.map(w => `<span class="chip"><span>${esc(w)}</span><button class="btn sm ghost" data-action="del-work" data-w="${esc(w)}" aria-label="Fjern">×</button></span>`).join('')}</div>
+    <div class="row"><input type="text" id="new-work" class="field" placeholder="Nytt arbeid (LMS)"><button class="btn" data-action="add-work">Legg til</button></div></section>`;
+  h += `<section class="panel set"><h2>Data</h2><div class="row">
+      <button class="btn" data-action="backup">Kopier backup</button>
+      <button class="btn" data-action="demo">Last eksempeldata</button>
+      <button class="btn sm danger" data-action="reset">Tøm alt</button>
+    </div><label class="muted" style="font-size:13px;display:grid;gap:4px">Gjenopprett fra backup<textarea id="restore" placeholder="Lim inn backup her"></textarea></label><div><button class="btn sm" data-action="restore">Gjenopprett</button></div></section>`;
+  h += `</div></div>`;
+  return h;
+}
+
+/* ---------- main render ---------- */
+function render(){
+  for (const b of document.querySelectorAll('.tab')) b.setAttribute('aria-current', b.dataset.tab === UI.tab ? 'page' : 'false');
+  const v = document.getElementById('view');
+  const pw = v.querySelector('.cal-wrap'); const keep = pw && UI.tab === 'kal' && UI.calShown === UI.cal ? pw.scrollLeft : null;
+  const py = window.scrollY;
+  v.className = UI.tab === 'kal' ? 'wide' : '';
+  v.innerHTML = UI.tab === 'fore' ? vFore() : UI.tab === 'kal' ? vKal() : UI.tab === 'rap' ? vRap() : vOpp();
+  if (UI.tab === 'kal'){ const w = v.querySelector('.cal-wrap'); const td = v.querySelector('thead th.today');
+    if (w && keep !== null){ w.scrollLeft = keep; window.scrollTo(0, py); } else if (td && w) w.scrollLeft = Math.max(0, td.offsetLeft - 240);
+    UI.calShown = UI.cal; } else UI.calShown = null;
+}
+let confirmT;
+function arm(key){ UI.confirm = key; clearTimeout(confirmT); confirmT = setTimeout(() => { UI.confirm = null; render(); }, 4000); render(); }
+const val = id => (document.getElementById(id)?.value || '').trim();
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]'); if (!el) return;
+  const A = el.dataset.action; const sh = UI.sheet;
+  if (A === 'scrim'){ if (e.target === el) closeSheet(); return; }
+  if (A === 'dlg-scrim'){ if (e.target === el){ UI.dlg = null; renderDlg(); } return; }
+  if (A === 'dlg-cancel'){ UI.dlg = null; renderDlg(); return; }
+  if (A === 'dlg-ok'){ const fn = UI.dlg && UI.dlg.fn; UI.dlg = null; renderDlg(); if (fn) fn(); return; }
+  switch (A){
+    case 'tab': setTab(el.dataset.tab); break;
+    case 'day': UI.date = isoOf(dn(UI.date) + +el.dataset.d); render(); break;
+    case 'today': UI.date = todayIso(); render(); break;
+    case 'toggle-off': UI.showOff[el.dataset.s] = !UI.showOff[el.dataset.s]; render(); break;
+    case 'open': openSheet(el.dataset.t); break;
+    case 'bulk': openBulk(+el.dataset.s); break;
+    case 'extra': openExtra(el.dataset.s ? +el.dataset.s : 1, el.dataset.from || UI.date); break;
+    case 'extra-save': {
+      const name = (sh.name || '').trim(); const days = Math.round(+sh.days);
+      if (!name){ toast('Skriv navnet'); document.getElementById('ex-name')?.focus(); break; }
+      if (!(days >= 1)){ toast('Antall skiftdager må være 1 eller mer'); break; }
+      const until = extraUntil(+sh.shift, sh.from, days);
+      const nt = {id:uid(), name, shift:+sh.shift, roles:[], extra:{from:sh.from, until}}; S.techs.push(nt);
+      for (let n = dn(sh.from); n <= Math.min(dn(until), dn(todayIso())); n++) recomputeAuto(nt.id, isoOf(n));
+      save(); UI.sheet = null; renderSheet(); render(); toast(name + ' lagt til på ' + shiftOf(+sh.shift).name + ' ' + ddmm(sh.from) + '–' + ddmm(until)); break; }
+    case 'close': closeSheet(); break;
+    case 'pick-act': { sh.act = el.dataset.a; const a0 = act(sh.act);
+      if (sh.mode === 'tech'){ if (a0.type === '1500H'){ const d0 = last1500(sh.tech); sh.machine = d0.machine; sh.work = d0.work; } else { sh.machine = null; sh.work = null; } addEntry(sh); break; }
+      if (a0.type !== '1500H'){ sh.machine = null; sh.work = null; } renderSheet(); break; }
+    case 'pick-m': sh.machine = el.dataset.m; if (ready1500(sh)) addEntry(sh); else renderSheet(); break;
+    case 'pick-w': sh.work = el.dataset.w; if (ready1500(sh)) addEntry(sh); else renderSheet(); break;
+    case 'pick-h': sh.hours = +el.dataset.h; renderSheet(); break;
+    case 'add-m': { const n = val('sh-newm').toUpperCase(); if (!n) break; if (!S.machines.some(m => m.name === n)) S.machines.push({id:uid(), name:n, active:true}); else S.machines.find(m => m.name===n).active = true; sh.newM = '';
+      if (sh.mode === 'tech'){ const tgt = entriesOf(sh.tech, sh.date).filter(e => e.act === 'h1500' && !e.machine).pop(); if (tgt) tgt.machine = n; save(); renderSheet(); render(); toast('Maskin ' + n + ' lagt til'); break; }
+      sh.machine = n; save(); if (ready1500(sh)) addEntry(sh); else renderSheet(); break; }
+    case 'step': { const e0 = S.entries.find(x => x.id === el.dataset.e); if (e0) setEntryHours(e0.id, +e0.hours + +el.dataset.d); break; }
+    case 'add': {
+      const a = act(sh.act); const hrs = +sh.hours; if (!a || !(hrs > 0)) break;
+      S.entries.push({id:uid(), date:sh.date, tech:sh.tech, act:a.id, machine:a.type==='1500H'?sh.machine:'', work:a.type==='1500H'?sh.work:'', hours:hrs});
+      save();
+      const t = tech(sh.tech); const rem = Math.max(0, stdHours(t, sh.date) - sumH(entriesOf(t.id, sh.date)));
+      toast('Lagret: ' + t.name.split(' ')[0] + ' · ' + (a.type==='1500H' ? 'LMS '+sh.machine : a.name) + ' · ' + fmtH(hrs) + ' t');
+      if (rem === 0){ closeSheet(); } else { sh.act = null; sh.machine = null; sh.work = null; sh.hours = rem; renderSheet(); render(); }
+      break; }
+    case 'del': { const e0 = S.entries.find(x => x.id === el.dataset.e); if (!e0) break; const t0 = tech(sh.tech);
+      ask({title:'Slette føringen?', text:label(e0)+' · '+fmtH(e0.hours)+' t for '+t0.name+' '+ddmm(sh.date)+'.', ok:'Slett', fn:() => {
+        S.entries = S.entries.filter(x => x.id !== e0.id); if (e0.auto) S.noAuto[e0.date + '|' + e0.tech] = true; recomputeAuto(e0.tech, e0.date); save();
+        sh.hours = Math.max(0, stdHours(t0, sh.date) - sumH(entriesOf(t0.id, sh.date))) || stdHours(t0, sh.date);
+        renderSheet(); render(); toast('Føring slettet'); }}); break; }
+    case 'bulk-apply': {
+      const a = act(sh.act); let n = 0;
+      for (const t of S.techs.filter(t => t.shift === sh.shift && activeOn(t, sh.date) && manualOf(t.id, sh.date).length === 0)){
+        S.entries = S.entries.filter(e => !(e.tech === t.id && e.date === sh.date && e.auto));
+        S.entries.push({id:uid(), date:sh.date, tech:t.id, act:a.id, machine:a.type==='1500H'?sh.machine:'', work:a.type==='1500H'?sh.work:'', hours:stdHours(t, sh.date)}); n++;
+      }
+      save(); closeSheet(); toast(n + ' teknikere satt til ' + (a.type==='1500H' ? 'LMS '+sh.machine : a.name)); break; }
+    case 'roles': UI.sheet = {mode:'roles', tech:el.dataset.t}; renderSheet(); break;
+    case 'role': { const t = tech(el.dataset.t); const r = el.dataset.r; t.roles = t.roles.includes(r) ? t.roles.filter(x => x !== r) : [...t.roles, r]; t.roles.sort((x, y) => S.roles.indexOf(x) - S.roles.indexOf(y)); save(); if (UI.sheet) renderSheet(); render(); break; }
+    case 'cell': openSheet(el.dataset.t, el.dataset.d); break;
+    case 'cal': { let [y,m] = UI.cal.split('-').map(Number); m += +el.dataset.d; if (m < 1){ m = 12; y--; } if (m > 12){ m = 1; y++; } UI.cal = y+'-'+String(m).padStart(2,'0'); render(); break; }
+    case 'opp-toggle': UI.oppOpen[el.dataset.s] = !UI.oppOpen[el.dataset.s]; render(); break;
+    case 'rap-toggle': UI.rapOpen[el.dataset.s] = !UI.rapOpen[el.dataset.s]; render(); break;
+    case 'range': {
+      const t = todayIso();
+      if (el.dataset.r === 'month'){ UI.from = t.slice(0,8)+'01'; UI.to = t; }
+      else if (el.dataset.r === 'year'){ UI.from = t.slice(0,5)+'01-01'; UI.to = t; }
+      else { const s = shiftOf(1); const c = cycle(); const p = (((dn(t)-dn(s.start))%c)+c)%c; UI.from = isoOf(dn(t)-p); UI.to = isoOf(dn(t)-p+c-1); }
+      render(); break; }
+    case 'csv': {
+      const f = dn(UI.from), t = dn(UI.to);
+      const rows = S.entries.filter(x => { const n = dn(x.date); return n >= f && n <= t; }).sort((a,b) => a.date.localeCompare(b.date));
+      const lines = ['Dato;Skift;Tekniker;Aktivitet;Maskin;Arbeid;Timer', ...rows.map(x => { const tt = tech(x.tech); const a = act(x.act); return [ddmm(x.date)+'.'+x.date.slice(0,4), tt?shiftOf(tt.shift).name:'', tt?tt.name:'', a?a.name:'', x.machine||'', x.work||'', String(x.hours).replace('.',',')].join(';'); })];
+      copy(lines.join('\n'), rows.length + ' rader kopiert. Lim inn i Excel.'); break; }
+    case 'clear-demo': ask({title:'Tømme eksempeldata?', text:'Alle eksempelføringer, maskiner og roller fjernes. Teknikerlisten blir stående.', ok:'Tøm', fn:() => { S = freshState(); autoFill(); render(); toast('Eksempeldata fjernet'); }}); break;
+    case 'demo': loadDemo(); autoFill(); render(); toast('Eksempeldata lastet'); break;
+    case 'reset': ask({title:'Tømme alt?', text:'Alle føringer, teknikere, maskiner og roller tilbakestilles. Dette kan ikke angres.', ok:'Tøm alt', fn:() => { S = freshState(); autoFill(); render(); toast('Alt er tømt'); }}); break;
+    case 'backup': copy(JSON.stringify(S), 'Backup kopiert. Lagre teksten et trygt sted.'); break;
+    case 'restore': { try { const o = JSON.parse(val('restore')); if (!o.techs || !o.entries) throw 0; S = migrate(o); save(); render(); toast('Backup gjenopprettet'); } catch(err){ toast('Kunne ikke lese backupen. Lim inn hele teksten fra «Kopier backup».'); } break; }
+    case 'add-tech': { const n = val('new-tech'); if (!n){ toast('Skriv navnet på teknikeren'); break; } const sid = +val('new-tech-s')||1; S.techs.push({id:uid(), name:n, shift:sid, roles:[]}); save(); render(); toast(n+' lagt til på '+shiftOf(sid).name); break; }
+    case 'rm-tech': { const id = val('rm-tech'); if (!id){ toast('Velg en tekniker å fjerne'); break; } const t0 = tech(id); const n = S.entries.filter(x => x.tech === id).length;
+      ask({title:'Fjerne '+t0.name+'?', text: n ? n+' føringer for '+t0.name.split(' ')[0]+' blir også slettet.' : 'Teknikeren fjernes fra føring, kalender og rapport.', ok:'Fjern', fn:() => {
+        S.techs = S.techs.filter(x => x.id !== id); S.entries = S.entries.filter(x => x.tech !== id); save(); render(); toast(t0.name+' fjernet'); }}); break; }
+    case 'del-tech': { const id = el.dataset.t; const t0 = tech(id); const n = S.entries.filter(x => x.tech === id).length;
+      ask({title:'Fjerne '+t0.name+'?', text: n ? n+' føringer for '+t0.name.split(' ')[0]+' blir også slettet.' : 'Teknikeren fjernes fra føring, kalender og rapport.', ok:'Fjern', fn:() => {
+        S.techs = S.techs.filter(x => x.id !== id); S.entries = S.entries.filter(x => x.tech !== id); save(); render(); toast(t0.name+' fjernet'); }}); break; }
+    case 'add-act': { const n = val('new-act'); if (!n) break; const used = new Set(S.acts.map(a => a.color)); const c = [1,2,3,4,5,6,7,8,9,10].find(x => !used.has(x)) || 10; S.acts.push({id:uid(), name:n, code:n.slice(0,2), role:'', type:'n', color:c}); save(); render(); break; }
+    case 'del-act': { const id = el.dataset.a; const a0 = act(id); if (!a0 || isLocked(a0)) break; const n = S.entries.filter(x => x.act === id).length;
+      ask({title:'Fjerne '+a0.name+'?', text: n ? n+' føringer med denne aktiviteten blir også slettet.' : 'Aktiviteten fjernes fra listen.', ok:'Fjern', fn:() => {
+        S.acts = S.acts.filter(x => x.id !== id); S.entries = S.entries.filter(x => x.act !== id); save(); render(); toast(a0.name+' fjernet'); }}); break; }
+    case 'add-m2': { const n = val('new-m').toUpperCase(); if (!n || S.machines.some(m => m.name === n)) break; S.machines.push({id:uid(), name:n, active:true}); save(); render(); break; }
+    case 'm-active': { const m = S.machines.find(m => m.id === el.dataset.m); m.active = !m.active; save(); render(); break; }
+    case 'del-m': { const id = el.dataset.m; const m0 = S.machines.find(x => x.id === id);
+      ask({title:'Fjerne '+m0.name+'?', text:'Maskinen fjernes fra listen. Timer som er ført på '+m0.name+' blir liggende i rapporten.', ok:'Fjern', fn:() => {
+        S.machines = S.machines.filter(x => x.id !== id); save(); render(); toast(m0.name+' fjernet'); }}); break; }
+    case 'add-role': { const n = val('new-role'); if (!n || S.roles.includes(n)) break; S.roles.push(n); save(); render(); break; }
+    case 'del-role': { const r = el.dataset.r; if (roleLocked(r)) break;
+      ask({title:'Fjerne rollen '+r+'?', text:'Rollen fjernes fra alle teknikere. Aktiviteter som krevde den blir tilgjengelige for alle.', ok:'Fjern', fn:() => {
+        S.roles = S.roles.filter(x => x !== r); for (const t of S.techs) t.roles = t.roles.filter(x => x !== r); for (const a of S.acts) if (a.role === r) a.role = ''; save(); render(); toast('Rollen '+r+' fjernet'); }}); break; }
+    case 'add-work': { const n = val('new-work'); if (!n || S.work.includes(n)) break; S.work.push(n); save(); render(); break; }
+    case 'del-work': { const w = el.dataset.w;
+      ask({title:'Fjerne «'+w+'»?', text:'Valget fjernes fra LMS. Timer som allerede er ført blir liggende.', ok:'Fjern', fn:() => { S.work = S.work.filter(x => x !== w); save(); render(); }}); break; }
+  }
+});
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.id === 'sh-hours' && UI.sheet){ UI.sheet.hours = el.value; const btn = document.querySelector('[data-action="add"]'); const a = act(UI.sheet.act); const ok = a && +el.value > 0 && (a.type !== '1500H' || (UI.sheet.machine && UI.sheet.work)); if (btn){ btn.disabled = !ok; } return; }
+  if (el.id === 'sh-newm' && UI.sheet){ UI.sheet.newM = el.value; return; }
+  if (UI.sheet && UI.sheet.mode === 'extra' && /^ex-/.test(el.id)){
+    const k = {'ex-name':'name','ex-shift':'shift','ex-from':'from','ex-days':'days'}[el.id]; if (!k) return;
+    if (k === 'from' && !el.value) return;
+    UI.sheet[k] = el.value; const p = document.getElementById('ex-prev'); if (p) p.innerHTML = extraPreview(UI.sheet); return; }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'f-date' && el.value){ UI.date = el.value; render(); return; }
+  if (el.id === 'r-from' && el.value){ UI.from = el.value; render(); return; }
+  if (el.id === 'r-to' && el.value){ UI.to = el.value; render(); return; }
+  if (el.id === 'sh-hours' && UI.sheet){ UI.sheet.hours = el.value; deferSheet(); return; }
+  if (el.dataset.eh){ setEntryHours(el.dataset.eh, el.value, true); return; }
+  if (el.dataset.em || el.dataset.ew){ const e0 = S.entries.find(x => x.id === (el.dataset.em || el.dataset.ew)); if (e0){ if (el.dataset.em) e0.machine = el.value; else e0.work = el.value; save(); deferSheet(); } return; }
+  const f = el.dataset.field; if (!f) return;
+  if (f === 'tname'){ tech(el.dataset.t).name = el.value.trim() || tech(el.dataset.t).name; }
+  else if (f === 'tshift'){ tech(el.dataset.t).shift = +el.value; }
+  else if (f === 'aname'){ act(el.dataset.a).name = el.value.trim() || act(el.dataset.a).name; }
+  else if (f === 'acode'){ act(el.dataset.a).code = el.value.trim() || act(el.dataset.a).code; }
+  else if (f === 'arole'){ act(el.dataset.a).role = el.value; }
+  else if (f === 'sstart' && el.value){ shiftOf(+el.dataset.s).start = el.value; }
+  else if (f === 'days'){ S.days[el.dataset.k] = Math.max(0, +el.value || 0); }
+  else if (f === 'sched' && el.value){ S.sched[el.dataset.k][el.dataset.w][+el.dataset.i] = el.value; }
+  else if (f === 'ot'){ S.sched.ot = Math.max(0, +el.value || 0); }
+  save(); render();
+});
+/* calendar hotkeys: M / A cycle machine / work on the hovered LMS day */
+document.addEventListener('mouseover', e => {
+  const td = e.target.closest && e.target.closest('td.cell[data-t]');
+  UI.hover = td ? {t: td.dataset.t, d: td.dataset.d} : null;
+});
+function cycleLms(field, dir){
+  const {t: techId, d: date} = UI.hover; const t = tech(techId); if (!t) return;
+  let list = entriesOf(techId, date).filter(e => act(e.act)?.type === '1500H');
+  if (!entriesOf(techId, date).length){ recomputeAuto(techId, date); save(); list = entriesOf(techId, date).filter(e => act(e.act)?.type === '1500H'); }
+  if (!list.length){ toast('Ingen LMS-timer på denne dagen'); return; }
+  const opts = field === 'machine' ? ['', ...S.machines.filter(m => m.active).map(m => m.name)] : ['', ...S.work];
+  if (opts.length < 2){ toast(field === 'machine' ? 'Ingen aktive maskiner. Legg til i Oppsett.' : 'Ingen arbeid å velge'); return; }
+  const cur = opts.indexOf(list[0][field] || '');
+  const next = opts[((cur < 0 ? 0 : cur) + dir + opts.length) % opts.length];
+  for (const e of list) e[field] = next;
+  save(); render();
+  toast(t.name.split(' ')[0] + ' ' + ddmm(date) + ': ' + (field === 'machine' ? (next || 'Ingen maskin') : (next || 'Arbeid –')));
+}
+document.addEventListener('keydown', e => {
+  if (UI.tab === 'kal' && UI.hover && !UI.sheet && !UI.dlg && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)){
+    const k = e.key.toLowerCase();
+    if (k === 'm' || k === 'a'){ e.preventDefault(); cycleLms(k === 'm' ? 'machine' : 'work', e.shiftKey ? -1 : 1); return; }
+  }
+  if (e.key === 'Escape'){ if (UI.dlg){ UI.dlg = null; renderDlg(); } else if (UI.sheet) closeSheet(); }
+  if (e.key === 'Enter' && e.target.id === 'sh-newm'){ e.preventDefault(); document.querySelector('[data-action="add-m"]')?.click(); }
+});
+
+/* ---------- boot ---------- */
+function migrate(o){
+  const f = freshState();
+  o.sched = f.sched; o.days = f.days; o.shifts = f.shifts; delete o.hours;
+  LOCKED.forEach((id, i) => { const fa = f.acts.find(a => a.id === id); const cur = o.acts.find(a => a.id === id);
+    if (!cur) o.acts.splice(Math.min(i, o.acts.length), 0, fa); else { cur.name = fa.name; cur.role = fa.role; cur.type = fa.type; }
+    if (fa.role && !o.roles.includes(fa.role)) o.roles.push(fa.role); });
+  o.acts = o.acts.filter(a => a.id !== 'eo'); o.entries = (o.entries || []).filter(e => e.act !== 'eo');
+  for (const t of o.techs) t.roles = t.roles.filter(r => r !== 'Engine Overhaul');
+  o.roles = (o.roles || []).filter(r => r !== 'Engine Overhaul');
+  o.roles = [...FIXED_ROLES, ...(o.roles || []).filter(r => !FIXED_ROLES.includes(r))];
+  o.noAuto = o.noAuto || {}; if (!o.autoFrom || o.autoFrom > AUTO_FROM){ o.autoFrom = AUTO_FROM; o.autoDone = null; }
+  if ((o.v || 0) < 7) for (const e of o.entries) if (e.auto){ e.machine = ''; e.work = ''; }
+  o.v = VERSION; return o; }
+if (!load()) loadDemo();
+else if ((S.v||1) < VERSION && (S.demo || (S.v||1) < 9)) loadDemo();
+else { S = migrate(S); save(); }
+autoFill();
+try { const t = localStorage.getItem(LS+'-tab'); if (t) UI.tab = t; } catch(e){}
+render();
+})();
+</script>
