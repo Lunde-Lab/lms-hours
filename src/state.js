@@ -1,0 +1,90 @@
+/* Applikasjonstilstand (S), UI-tilstand og avledede oppslag. Lagring går via storage-adapteren. */
+import { dn, isoOf, todayIso, uid } from './util.js';
+import { VERSION, AUTO_FROM, LMS, LOCKED, FIXED_ROLES, freshState as fresh } from './model.js';
+import * as P from './schedule.js';
+
+export let S;
+export function setState(s){ S = s; }
+export const freshState = () => fresh(uid);
+
+let store;
+export function setStorage(adapter){ store = adapter; }
+export async function load(){ const o = await store.loadAll(); if (o) { S = o; return true; } return false; }
+export function save(){ store.saveAll(S); reindex(); }
+
+export const UI = { oppOpen:{}, rapOpen:{}, tab:'fore', date: todayIso(), showOff:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null };
+
+/* ---------- oppslag ---------- */
+let IDX = new Map();
+export function reindex(){ IDX = new Map(); for (const e of S.entries){ const k = e.date+'|'+e.tech; if(!IDX.has(k)) IDX.set(k,[]); IDX.get(k).push(e);} }
+export const entriesOf = (tech,date) => IDX.get(date+'|'+tech) || [];
+export const act = id => S.acts.find(a => a.id === id);
+export const tech = id => S.techs.find(t => t.id === id);
+export const shiftOf = id => S.shifts.find(s => s.id === id);
+export const cycle = () => P.cycle(S);
+
+/* skiftplan mot gjeldende tilstand */
+export const phase = (shiftId, date) => P.phase(S, shiftId, date);
+export const workHours = (key, date) => P.workHours(S, key, date);
+export const timeTxt = (key, date) => P.timeTxt(S, key, date);
+export const stdHours = (t, date) => P.stdHours(S, t, date);
+export const extraUntil = (shift, from, days) => P.extraUntil(S, shift, from, days);
+
+export const sumH = arr => arr.reduce((a,e) => a + (+e.hours||0), 0);
+export const label = e => { const a = act(e.act); if (!a) return 'Ukjent'; return a.type === '1500H' ? (e.machine || 'LMS') + (e.work ? ' · ' + e.work : '') : a.name; };
+export const color = a => 'var(--a'+((a && a.color) || 7)+')';
+export const allowed = t => S.acts.filter(a => !a.role || t.roles.includes(a.role));
+export const isLocked = a => LOCKED.includes(a.id);
+export const roleLocked = r => FIXED_ROLES.includes(r) || S.acts.some(a => isLocked(a) && a.role === r);
+export function dominant(list){
+  const m = new Map(); for (const e of list) m.set(e.act, (m.get(e.act)||0) + (+e.hours||0));
+  let best = null, bv = -1; for (const [k,v] of m) if (v > bv){ best = k; bv = v; }
+  return {act: act(best), split: list.length > 1};
+}
+export const activeOn = (t, date) => !t.extra || (date >= t.extra.from && date <= t.extra.until);
+export const workDay = (t, date) => activeOn(t, date) && phase(t.shift, date).key !== 'F';
+export const manualOf = (techId, date) => entriesOf(techId, date).filter(e => !e.auto);
+
+/* ---------- LMS-standard ---------- */
+/* fyller det som er igjen av arbeidsdagen med én automatisk LMS-føring */
+export function recomputeAuto(techId, date){
+  const t = tech(techId); if (!t) return;
+  const list = S.entries.filter(e => e.tech === techId && e.date === date);
+  const autos = list.filter(e => e.auto); const keep = autos[0];
+  if (autos.length > 1) S.entries = S.entries.filter(e => !autos.slice(1).includes(e));
+  const rest = P.lmsFill(stdHours(t, date), sumH(list.filter(e => !e.auto)));
+  if (rest > 0 && !S.noAuto[date + '|' + techId] && workDay(t, date)){
+    if (keep) keep.hours = rest;
+    else S.entries.push({id:uid(), date, tech:techId, act:LMS, machine:'', work:'', hours:rest, auto:true});
+  } else if (keep) S.entries = S.entries.filter(e => e !== keep);
+}
+/* fører LMS-standard for alle arbeidsdager uten føringer, fra forrige kjøring til og med i dag */
+export function autoFill(){
+  reindex();
+  const today = dn(todayIso());
+  const start = Math.max(dn(S.autoFrom || AUTO_FROM), S.autoDone ? dn(S.autoDone) + 1 : 0);
+  if (start > today) return;
+  for (let n = start; n <= today; n++){ const d = isoOf(n);
+    for (const t of S.techs){
+      if (entriesOf(t.id, d).length) continue;
+      if (!workDay(t, d) || S.noAuto[d + '|' + t.id]) continue;
+      S.entries.push({id:uid(), date:d, tech:t.id, act:LMS, machine:'', work:'', hours: stdHours(t, d), auto:true});
+    }
+  }
+  S.autoDone = isoOf(today); save();
+}
+
+/* ---------- migrering av lagret tilstand ---------- */
+export function migrate(o){
+  const f = freshState();
+  o.sched = f.sched; o.days = f.days; o.shifts = f.shifts; delete o.hours;
+  LOCKED.forEach((id, i) => { const fa = f.acts.find(a => a.id === id); const cur = o.acts.find(a => a.id === id);
+    if (!cur) o.acts.splice(Math.min(i, o.acts.length), 0, fa); else { cur.name = fa.name; cur.role = fa.role; cur.type = fa.type; }
+    if (fa.role && !o.roles.includes(fa.role)) o.roles.push(fa.role); });
+  o.acts = o.acts.filter(a => a.id !== 'eo'); o.entries = (o.entries || []).filter(e => e.act !== 'eo');
+  for (const t of o.techs) t.roles = t.roles.filter(r => r !== 'Engine Overhaul');
+  o.roles = (o.roles || []).filter(r => r !== 'Engine Overhaul');
+  o.roles = [...FIXED_ROLES, ...(o.roles || []).filter(r => !FIXED_ROLES.includes(r))];
+  o.noAuto = o.noAuto || {}; if (!o.autoFrom || o.autoFrom > AUTO_FROM){ o.autoFrom = AUTO_FROM; o.autoDone = null; }
+  if ((o.v || 0) < 7) for (const e of o.entries) if (e.auto){ e.machine = ''; e.work = ''; }
+  o.v = VERSION; return o; }
