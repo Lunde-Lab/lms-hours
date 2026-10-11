@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LMS Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="src/app.js"></script>
+</head>
+<body>
+<header class="bar"><div class="bar-in">
+  <div class="brand">LMS Timer <small>Proof of concept</small></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab" data-action="tab" data-tab="fore">Føring</button>
+    <button class="tab" data-action="tab" data-tab="kal">Kalender</button>
+    <button class="tab" data-action="tab" data-tab="rap">Rapport</button>
+    <button class="tab" data-action="tab" data-tab="opp">Oppsett</button>
+  </nav>
+</div></header>
+<main id="view"></main>
+<div id="overlay" hidden></div>
+<div id="dlg" hidden></div>
+<div id="toast" class="toast" hidden></div>
+</body>
+</html>
