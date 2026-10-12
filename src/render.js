@@ -26,7 +26,7 @@ function renderDay(){
   if (!UI.dayOpen){ el.hidden = true; el.innerHTML = ''; return; }
   const prev = el.querySelector('.daysheet'); const y = prev ? prev.scrollTop : 0;
   el.hidden = false;
-  el.innerHTML = `<div class="scrim day-scrim" data-action="day-scrim"><div class="sheet daysheet${prev ? '' : ' anim'}" role="dialog" aria-modal="true" aria-label="Føring">${vFore()}</div></div>`;
+  el.innerHTML = `<div class="scrim day-scrim" data-action="day-scrim"><div class="sheet daysheet${prev ? '' : ' anim'}" role="dialog" aria-modal="true" aria-label="Dagsoversikt">${vFore()}</div></div>`;
   el.querySelector('.daysheet').scrollTop = y;
 }
 

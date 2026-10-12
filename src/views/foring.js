@@ -9,7 +9,7 @@ import { xtag } from '../ui/bits.js';
 export function vFore(){
   const date = UI.date;
   const order = [...S.shifts].sort((a,b) => (phase(a.id,date).key==='F') - (phase(b.id,date).key==='F') || a.id-b.id);
-  let h = `<div class="sheet-h"><div class="t">Føring</div><button class="icon-btn x" data-action="day-close" aria-label="Lukk">×</button></div>`;
+  let h = `<div class="sheet-h"><div class="t">Dagsoversikt</div><button class="icon-btn x" data-action="day-close" aria-label="Lukk">×</button></div>`;
   h += `<div class="datenav">
     <button class="icon-btn" data-action="day" data-d="-1" aria-label="Forrige dag">‹</button>
     <button class="icon-btn" data-action="day" data-d="1" aria-label="Neste dag">›</button>
