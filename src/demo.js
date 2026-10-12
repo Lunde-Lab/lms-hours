@@ -7,7 +7,6 @@ function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let 
 
 export function loadDemo(){
   setState(freshState()); S.demo = true;
-  S.machines = [{id:uid(),name:'ONX',active:true},{id:uid(),name:'ONY',active:true},{id:uid(),name:'ONZ',active:false}];
   const R = rng(7);
   const roleMap = {'Tekniker 1-01':['Assessor'],'Tekniker 1-07':['Hot Section'],'Tekniker 2-01':['Assessor'],'Tekniker 2-09':['Hot Section'],'Tekniker 3-01':['Assessor','Hot Section'],'Tekniker 3-11':['Hot Section']};
   S.techs.forEach((t, i) => { t.roles = [i % 5 === 4 ? 'B2' : 'B1', ...(roleMap[t.name] || []), ...(i % 4 === 0 ? ['CRS'] : []), ...(i % 7 === 3 ? ['Borescope'] : [])]; });

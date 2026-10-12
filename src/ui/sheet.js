@@ -2,7 +2,7 @@
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, hasMW, lacksMW, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
+  sumH, label, hasMW, lacksMW, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange, moveTech, removeTech } from '../state.js';
 import { render } from '../render.js';
 import { toast, toastUndo, snapshot } from './toast.js';
 import { ask, promptText } from './dialog.js';
@@ -148,9 +148,10 @@ export function renderSheet(){
   } else if (sh.mode === 'roles'){
     const t = tech(sh.tech);
     body = `<div class="sheet-h"><div><div class="t">${esc(t.name)}</div><div class="s">${esc(shiftOf(t.shift).name)} · ${t.roles.length} ${t.roles.length === 1 ? 'rolle' : 'roller'} valgt</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      <div class="sec"><h3>Skift</h3><div class="grid-btns">${S.shifts.map(x => `<button class="opt" data-action="tech-shift" data-t="${t.id}" data-s="${x.id}" aria-pressed="${t.shift === x.id}">${esc(x.name)}</button>`).join('')}</div></div>
       <div class="sec"><h3>Roller</h3><div class="grid-btns">${S.roles.map(r => `<button class="opt" data-action="role" data-t="${t.id}" data-r="${esc(r)}" aria-pressed="${t.roles.includes(r)}"><span class="cb" aria-hidden="true">✓</span>${esc(r)}</button>`).join('')}</div></div>
-      <div class="muted" style="font-size:13px">Rollene styrer hvilke aktiviteter teknikeren kan føres på.</div>
-      <div class="sheet-f"><button class="btn primary" data-action="close">Ferdig</button></div>`;
+      <div class="muted" style="font-size:13px">Rollene styrer hvilke aktiviteter teknikeren kan føres på. Ved bytte av skift beholdes føringene.</div>
+      <div class="sheet-f"><button class="btn danger lead" data-action="rm-tech" data-t="${t.id}">Fjern tekniker</button><button class="btn primary" data-action="close">Ferdig</button></div>`;
   } else {
     const t = tech(sh.tech); const list = entriesOf(t.id, sh.date); const std = stdHours(t, sh.date);
     const sum = sumH(list); const rem = std - sum; const ph = phase(t.shift, sh.date);
@@ -218,6 +219,11 @@ export const actions = {
     ask({title:'Nullstille dagene?', text:'Alle føringer for ' + t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' fjernes. LMS standard fyller arbeidsdagene igjen.', ok:'Nullstill', fn:() => {
       const snap = snapshot(); clearRange(sh.tech, sh.from, sh.to); save(); closeSheet(); toastUndo(t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' nullstilt', snap); }}); },
   roles(el){ UI.sheet = {mode:'roles', tech:el.dataset.t}; renderSheet(); },
+  'tech-shift'(el){ const t = tech(el.dataset.t); if (!t) return; const sid = +el.dataset.s; const snap = snapshot();
+    if (!moveTech(t.id, sid)) return; save(); renderSheet(); render(); toastUndo(t.name + ' flyttet til ' + shiftOf(sid).name, snap); },
+  'rm-tech'(el){ const t0 = tech(el.dataset.t); if (!t0) return; const n = S.entries.filter(x => x.tech === t0.id).length;
+    ask({title:'Fjerne '+t0.name+'?', text: n ? n+' føringer for '+t0.name.split(' ')[0]+' blir også slettet.' : 'Teknikeren fjernes fra føring, kalender og rapport.', ok:'Fjern', fn:() => {
+      const snap = snapshot(); removeTech(t0.id); save(); closeSheet(); toastUndo(t0.name+' fjernet', snap); }}); },
   role(el){ const t = tech(el.dataset.t); const r = el.dataset.r; t.roles = t.roles.includes(r) ? t.roles.filter(x => x !== r) : [...t.roles, r]; t.roles.sort((x, y) => S.roles.indexOf(x) - S.roles.indexOf(y)); save(); if (UI.sheet) renderSheet(); render(); }
 };
 

@@ -1,6 +1,6 @@
 /* Applikasjonstilstand (S), UI-tilstand og avledede oppslag. Lagring går via storage-adapteren. */
 import { dn, isoOf, todayIso, uid } from './util.js';
-import { VERSION, AUTO_FROM, LMS, LOCKED, FIXED_ROLES, WORK_TYPES, freshState as fresh } from './model.js';
+import { VERSION, AUTO_FROM, LMS, LOCKED, FIXED_ROLES, FIXED_MACHINES, WORK_TYPES, freshState as fresh } from './model.js';
 import * as P from './schedule.js';
 import { profileOf, migrateProfiles } from './profiles.js';
 
@@ -25,6 +25,7 @@ export const entriesOf = (tech,date) => IDX.get(date+'|'+tech) || [];
 export const act = id => S.acts.find(a => a.id === id);
 export const tech = id => S.techs.find(t => t.id === id);
 export const shiftOf = id => S.shifts.find(s => s.id === id);
+export const fixedMachine = m => FIXED_MACHINES.includes(m.name);
 export const cycle = () => P.cycle(S);
 
 /* skiftplan mot gjeldende tilstand */
@@ -120,6 +121,20 @@ export function clearRange(techId, from, to){
   reindex(); return n;
 }
 
+/* ---------- teknikere ---------- */
+/* Flytter teknikeren til et annet skift. Føringene beholdes; LMS-standard for i dag regnes ut på nytt. */
+export function moveTech(techId, shiftId){
+  const t = tech(techId); if (!t || !shiftOf(shiftId) || t.shift === shiftId) return false;
+  t.shift = shiftId; recomputeAuto(techId, todayIso()); reindex(); return true;
+}
+/* Fjerner teknikeren med alle føringer og notater. */
+export function removeTech(techId){
+  S.techs = S.techs.filter(x => x.id !== techId); S.entries = S.entries.filter(x => x.tech !== techId);
+  for (const k in S.notes || {}) if (k.endsWith('|' + techId)) delete S.notes[k];
+  for (const k in S.noAuto || {}) if (k.endsWith('|' + techId)) delete S.noAuto[k];
+  reindex();
+}
+
 /* ---------- migrering av lagret tilstand ---------- */
 export function migrate(o){
   const f = freshState();
@@ -131,6 +146,8 @@ export function migrate(o){
   for (const t of o.techs) t.roles = t.roles.filter(r => r !== 'Engine Overhaul');
   o.roles = (o.roles || []).filter(r => r !== 'Engine Overhaul');
   o.roles = [...FIXED_ROLES, ...(o.roles || []).filter(r => !FIXED_ROLES.includes(r))];
+  const ms = o.machines || [];
+  o.machines = [...FIXED_MACHINES.map(n => ms.find(m => m.name === n) || {id:uid(), name:n, active:true}), ...ms.filter(m => !FIXED_MACHINES.includes(m.name))];
   o.work = [...WORK_TYPES(), ...(o.work || []).filter(w => !WORK_TYPES().includes(w))];
   o.profiles = migrateProfiles(o.profiles, uid);
   o.noAuto = o.noAuto || {}; o.notes = o.notes || {}; if (!o.autoFrom || o.autoFrom > AUTO_FROM){ o.autoFrom = AUTO_FROM; o.autoDone = null; }
