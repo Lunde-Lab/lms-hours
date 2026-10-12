@@ -1,7 +1,7 @@
 /* LMS-standard i tilstanden: automatisk føring fyller resten av arbeidsdagen. */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, lacksMW, label, noteOf, setNote, moveTech, removeTech, fixedMachine } from '../src/state.js';
+import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, lacksMW, label, noteOf, setNote, moveTech, removeTech } from '../src/state.js';
 import { FIXED_MACHINES } from '../src/model.js';
 
 setStorage({ saveAll(){} });
@@ -66,14 +66,14 @@ test('LMS uten maskin eller arbeid mangler noe; Line uten maskin gjør ikke det'
   assert.equal(lacksMW({act:'line', machine:'', work:'', hours:9}), false);
 });
 
-test('faste maskiner finnes alltid; egne maskiner og status beholdes', () => {
+test('faste maskiner finnes alltid og starter som ferdig; egne maskiner og status beholdes', () => {
   assert.deepEqual(S.machines.map(m => m.name), FIXED_MACHINES);
-  const o = freshState(); o.machines = [{id:'x', name:'OIB', active:false}, {id:'y', name:'ONX', active:true}];
+  assert.equal(S.machines.every(m => !m.active), true);
+  const o = freshState(); o.machines = [{id:'x', name:'OIB', active:true}, {id:'y', name:'ONX', active:true}];
   const m = migrate(o);
   assert.deepEqual(m.machines.map(x => x.name), [...FIXED_MACHINES, 'ONX']);
-  assert.equal(m.machines.find(x => x.name === 'OIB').active, false);
-  assert.equal(fixedMachine({name:'OIB'}), true);
-  assert.equal(fixedMachine({name:'ONX'}), false);
+  assert.equal(m.machines.find(x => x.name === 'OIB').active, true);
+  assert.equal(m.machines.find(x => x.name === 'OIC').active, false);
 });
 test('Assessment er en fast aktivitet uten rolle', () => {
   const o = freshState(); o.acts = o.acts.filter(a => a.id !== 'assm');

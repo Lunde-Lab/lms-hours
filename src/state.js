@@ -25,7 +25,6 @@ export const entriesOf = (tech,date) => IDX.get(date+'|'+tech) || [];
 export const act = id => S.acts.find(a => a.id === id);
 export const tech = id => S.techs.find(t => t.id === id);
 export const shiftOf = id => S.shifts.find(s => s.id === id);
-export const fixedMachine = m => FIXED_MACHINES.includes(m.name);
 export const cycle = () => P.cycle(S);
 
 /* skiftplan mot gjeldende tilstand */
@@ -147,7 +146,7 @@ export function migrate(o){
   o.roles = (o.roles || []).filter(r => r !== 'Engine Overhaul');
   o.roles = [...FIXED_ROLES, ...(o.roles || []).filter(r => !FIXED_ROLES.includes(r))];
   const ms = o.machines || [];
-  o.machines = [...FIXED_MACHINES.map(n => ms.find(m => m.name === n) || {id:uid(), name:n, active:true}), ...ms.filter(m => !FIXED_MACHINES.includes(m.name))];
+  o.machines = [...FIXED_MACHINES.map(n => ms.find(m => m.name === n) || {id:uid(), name:n, active:false}), ...ms.filter(m => !FIXED_MACHINES.includes(m.name))];
   o.work = [...WORK_TYPES(), ...(o.work || []).filter(w => !WORK_TYPES().includes(w))];
   o.profiles = migrateProfiles(o.profiles, uid);
   o.noAuto = o.noAuto || {}; o.notes = o.notes || {}; if (!o.autoFrom || o.autoFrom > AUTO_FROM){ o.autoFrom = AUTO_FROM; o.autoDone = null; }

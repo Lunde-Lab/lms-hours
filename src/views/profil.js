@@ -47,7 +47,7 @@ export function logout(){
 }
 
 /* Handlinger som bare admin kan gjøre (sjekkes i app.js før handlingen kjøres) */
-export const ADMIN_ONLY = ['prof-add', 'prof-rm', 'reset', 'restore'];
+export const ADMIN_ONLY = ['prof-add', 'prof-rm'];
 
 export const actions = {
   login(el){ if (login(el.dataset.p)){ render(); toast('Logget inn som ' + me().name); } },
