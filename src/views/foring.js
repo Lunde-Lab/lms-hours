@@ -44,7 +44,7 @@ export function vFore(){
         h += `<button class="tech" data-action="open" data-t="${t.id}">
           <span class="nm">${esc(t.name)}${xtag(t)}</span>
           <span class="hrs"><span class="status ${st} num">${stTxt}</span>${sum ? `<span class="meter ${st==='part'?'part':''}"><i style="width:${Math.min(100,sum/std*100)}%"></i></span>` : ''}</span>
-          <span class="chips">${!list.length && !off && dn(date) > dn(todayIso()) && workDay(t, date) && !S.noAuto[date + '|' + t.id] ? `<span class="chip auto"><i class="dot" style="background:${color(act('h1500'))}"></i><span>LMS · standard</span><b class="num">${fmtH(std)}</b></span>` : ''}${list.map(e => `<span class="chip ${e.auto ? 'auto' : ''}"><i class="dot" style="background:${color(act(e.act))}"></i><span>${esc(label(e))}</span><b class="num">${fmtH(e.hours)}</b></span>`).join('')}</span>
+          <span class="chips">${!list.length && !off && dn(date) > dn(todayIso()) && workDay(t, date) && !S.noAuto[date + '|' + t.id] ? `<span class="chip auto"><i class="dot" style="background:${color(act('h1500'))}"></i><span>LMS · standard</span><b class="num">${fmtH(std)}</b></span>` : ''}${list.map(chip).join('')}</span>
         </button>`;
       }
       h += `</div>`;
@@ -52,6 +52,14 @@ export function vFore(){
     h += `</section>`;
   }
   return h;
+}
+
+/* LMS på to linjer: «LMS» øverst, maskin og arbeid under. Uten maskin og arbeid holder én linje. */
+function chip(e){
+  const a = act(e.act); const dot = `<i class="dot" style="background:${color(a)}"></i>`; const h = `<b class="num">${fmtH(e.hours)}</b>`;
+  const sub = a?.type === '1500H' ? [e.machine, e.work].filter(Boolean).join(' · ') : '';
+  if (!sub) return `<span class="chip ${e.auto ? 'auto' : ''}">${dot}<span>${esc(label(e))}</span>${h}</span>`;
+  return `<span class="chip two ${e.auto ? 'auto' : ''}">${dot}<span class="cl"><span>LMS</span><small>${esc(sub)}</small></span>${h}</span>`;
 }
 
 export const actions = {

@@ -2,7 +2,7 @@
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, color, allowed, activeOn, recomputeAuto } from '../state.js';
+  sumH, label, color, allowed, activeOn, workDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
 import { render } from '../render.js';
 import { toast } from './toast.js';
 import { ask } from './dialog.js';
@@ -20,6 +20,8 @@ export function openBulk(shiftId){
   UI.sheet = {mode:'bulk', shift:shiftId, date:UI.date, act:null, machine:null, work:null, count:ts.length};
   renderSheet();
 }
+/* flere dager for én tekniker, valgt ved å dra i kalenderen */
+export function openRange(techId, from, to){ UI.sheet = {mode:'range', tech:techId, from, to, act:null, machine:null, work:null}; renderSheet(); }
 export function openExtra(shift, date){ UI.sheet = {mode:'extra', name:'', shift: shift || 1, from: date || UI.date, days: 1}; renderSheet(); setTimeout(() => document.getElementById('ex-name')?.focus(), 0); }
 export function closeSheet(){ UI.sheet = null; renderSheet(); render(); }
 
@@ -32,7 +34,7 @@ function extraPreview(sh){
 function entryLabel(e){
   const a = act(e.act); if (!a || a.type !== '1500H') return esc(label(e));
   const ms = S.machines.filter(m => m.active || m.name === e.machine).map(m => m.name);
-  return `LMS <select class="mini" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select>`;
+  return `<span class="ln1">LMS${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
 }
 
 /* ---------- føringer ---------- */
@@ -95,6 +97,18 @@ export function renderSheet(){
       <div class="sec"><h3>Aktivitet</h3>${actPicker(S.acts.filter(x => !x.role), sh.act)}</div>
       ${a && a.type === '1500H' ? h1500Picker(sh) : ''}
       <div class="sheet-f"><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="bulk-apply" ${ok?'':'disabled'}>Sett ${sh.count} teknikere</button></div>`;
+  } else if (sh.mode === 'range'){
+    const t = tech(sh.tech); const days = rangeDays(t.id, sh.from, sh.to);
+    const off = days.length > 0 && !workDay(t, days[0]);
+    const skip = dn(sh.to) - dn(sh.from) + 1 - days.length;
+    const busy = days.filter(d => manualOf(t.id, d).length).length;
+    const tot = days.reduce((x, d) => x + stdHours(t, d), 0);
+    const a = act(sh.act); const ok = a && (a.type !== '1500H' || (sh.machine && sh.work)) && days.length > 0;
+    body = `<div class="sheet-h"><div><div class="t">${esc(t.name)}</div><div class="s">${esc(ddmm(sh.from))} – ${esc(ddmm(sh.to))} · ${esc(shiftOf(t.shift).name)} · ${days.length} ${off ? (days.length === 1 ? 'fridag (overtid)' : 'fridager (overtid)') : (days.length === 1 ? 'arbeidsdag' : 'arbeidsdager')} · ${fmtH(tot)} t${skip ? ` · ${skip} ${skip === 1 ? 'dag' : 'dager'} hoppes over` : ''}</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      <div class="sec"><h3>Aktivitet</h3>${actPicker(allowed(t), sh.act)}</div>
+      ${a && a.type === '1500H' ? h1500Picker(sh) : ''}
+      <div class="hint">Hver dag får full arbeidsdag med aktiviteten.${busy ? ` Føringene på ${busy} ${busy === 1 ? 'dag' : 'dager'} erstattes.` : ''}</div>
+      <div class="sheet-f"><button class="btn danger lead" data-action="range-clear">Nullstill dagene</button><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="range-apply" ${ok ? '' : 'disabled'}>Før ${days.length} ${days.length === 1 ? 'dag' : 'dager'}</button></div>`;
   } else if (sh.mode === 'extra'){
     body = `<div class="sheet-h"><div><div class="t">Ekstra personell</div><div class="s">Vises på skiftet i perioden. Timer føres som vanlig.</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       <div class="form">
@@ -125,7 +139,7 @@ export function renderSheet(){
       </div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       <div class="sec"><div class="row" style="justify-content:space-between"><h3>Dagen</h3><span class="num daytxt ${rem < 0 ? 'over' : rem === 0 ? 'full' : ''}">${fmtH(sum)} / ${fmtH(std)} t · ${remTxt}</span></div>
         <div class="daybar">${list.map(e => `<i style="width:${(+e.hours||0)/scale*100}%;background:${color(act(e.act))}" title="${esc(label(e))} ${fmtH(e.hours)} t"></i>`).join('')}</div>
-        ${list.length ? list.map(e => `<div class="entry ${e.id === UI.flash ? 'flash' : ''}"><i class="edot" style="background:${color(act(e.act))}"></i><span class="lbl">${entryLabel(e)}${e.auto ? '<span class="atag">standard</span>' : ''}</span>
+        ${list.length ? list.map(e => `<div class="entry ${e.id === UI.flash ? 'flash' : ''}"><i class="edot" style="background:${color(act(e.act))}"></i>${act(e.act)?.type === '1500H' ? `<span class="lbl two">${entryLabel(e)}</span>` : `<span class="lbl">${entryLabel(e)}${e.auto ? '<span class="atag">standard</span>' : ''}</span>`}
           <span class="stepper"><button class="icon-btn sm" data-action="step" data-e="${e.id}" data-d="-0.5" aria-label="En halv time mindre">−</button><input class="hours-in" type="text" inputmode="decimal" id="eh-${e.id}" data-eh="${e.id}" value="${fmtH(e.hours)}" aria-label="Timer ${esc(label(e))}"><button class="icon-btn sm" data-action="step" data-e="${e.id}" data-d="0.5" aria-label="En halv time mer">+</button></span>
           <button class="icon-btn sm danger del" data-action="del" data-e="${e.id}" aria-label="Slett ${esc(label(e))}">×</button></div>`).join('') : '<div class="hint">Ingenting ført ennå.</div>'}
         ${list.some(e => act(e.act)?.type === '1500H') ? `<div class="row newm"><input type="text" id="sh-newm" class="field" placeholder="Ny maskin, f.eks. ONX" value="${esc(sh.newM || '')}" aria-label="Ny maskin"><button class="btn sm" data-action="add-m">Legg til maskin</button></div>` : ''}
@@ -177,6 +191,13 @@ export const actions = {
       S.entries.push({id:uid(), date:sh.date, tech:t.id, act:a.id, machine:a.type==='1500H'?sh.machine:'', work:a.type==='1500H'?sh.work:'', hours:stdHours(t, sh.date)}); n++;
     }
     save(); closeSheet(); toast(n + ' teknikere satt til ' + (a.type==='1500H' ? 'LMS '+sh.machine : a.name)); },
+  'range-apply'(el, sh){
+    const a = act(sh.act); if (!a) return;
+    const n = applyRange(sh.tech, sh.from, sh.to, a.id, sh.machine || '', sh.work || ''); save(); closeSheet();
+    toast(tech(sh.tech).name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ': ' + n + ' ' + (n === 1 ? 'dag' : 'dager') + ' satt til ' + (a.type === '1500H' ? 'LMS ' + sh.machine + ' · ' + sh.work : a.name)); },
+  'range-clear'(el, sh){ const t0 = tech(sh.tech);
+    ask({title:'Nullstille dagene?', text:'Alle føringer for ' + t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' fjernes. LMS standard fyller arbeidsdagene igjen.', ok:'Nullstill', fn:() => {
+      clearRange(sh.tech, sh.from, sh.to); save(); closeSheet(); toast(t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' nullstilt'); }}); },
   roles(el){ UI.sheet = {mode:'roles', tech:el.dataset.t}; renderSheet(); },
   role(el){ const t = tech(el.dataset.t); const r = el.dataset.r; t.roles = t.roles.includes(r) ? t.roles.filter(x => x !== r) : [...t.roles, r]; t.roles.sort((x, y) => S.roles.indexOf(x) - S.roles.indexOf(y)); save(); if (UI.sheet) renderSheet(); render(); }
 };

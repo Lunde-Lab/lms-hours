@@ -78,4 +78,6 @@ Utkast ligger i `supabase/drafts/` (ikke `migrations/`) slik at ingenting kjøre
 - LMS-standard: automatisk LMS-føring som fyller resten av arbeidsdagen (`lmsFill`, `recomputeAuto`).
 - Faste aktiviteter (kan ikke endres eller slettes): Line, LMS, Assessor, Hot Section, Kurs, Mod, Ferie, Avspasering, Annet.
 - Faste roller (kan ikke slettes): Assessor, B1, B2, CRS, Independent, RGR, Hot Section, Borescope.
+- Arbeid på LMS-føringer: Sheet, Repair, Inspection, Mod, SLL, Testing, Final (`WORK_TYPES` i `src/model.js`).
+- Aktiviteter, roller og LMS-arbeid legges inn i koden, ikke i Oppsett. Oppsett har bare teknikere/roller per tekniker, maskiner og backup.
 - Ekstra personell: tekniker med `extra: {from, until}`, aktiv på skiftet i perioden.

@@ -180,7 +180,6 @@ textarea{width:100%;min-height:90px;border:1px solid var(--line-2);border-radius
 .dlg-f{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;flex-wrap:wrap}
 .btn.danger-fill{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
 .btn.danger-fill:hover{filter:brightness(1.05)}
-.lock{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .fx{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .fx p{margin:4px 0 0;font-size:14px}
 .sw2{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;border:1px solid var(--line-2)}
@@ -245,6 +244,24 @@ textarea{width:100%;min-height:90px;border:1px solid var(--line-2);border-radius
 .chev2{display:inline-block;width:16px;color:var(--muted)}
 .t tr.in td:first-child{padding-left:26px}
 kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line-2);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface);color:var(--fg)}
+/* LMS på to linjer: «LMS» øverst, maskin og arbeid under */
+.entry .lbl.two{flex-direction:column;align-items:flex-start;gap:4px}
+.entry .lbl .ln1{display:flex;align-items:center;gap:6px}
+.entry .lbl .ln2{display:flex;flex-wrap:wrap;gap:4px}
+.entry .lbl .ln2 .mini{margin-left:0}
+.chip.two{border-radius:8px;padding:3px 9px 3px 7px;line-height:1.25}
+.chip.two .cl{display:grid}
+.chip.two small{font-size:12px;color:var(--muted)}
+/* kalender: dra over flere dager på én rad */
+.cal td.cell{user-select:none}
+.cal td.cell.sel::after{content:"";position:absolute;inset:0;background:var(--accent);opacity:.22;pointer-events:none}
+.cal td.cell.sel{box-shadow:inset 0 2px 0 var(--accent),inset 0 -2px 0 var(--accent)}
+.sheet-f .lead{margin-right:auto}
+/* PC-skjerm (22–24"): kalenderen ruller inni seg selv, så datoraden og navnekolonnen alltid er synlige */
+@media (min-width:1024px) and (min-height:640px){
+  main.wide{padding-bottom:20px}
+  .cal-wrap{max-height:calc(100vh - 200px);overflow:auto}
+}
 /* toast */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:8px;z-index:60;font-weight:500;max-width:calc(100% - 32px)}
 @media (max-width:560px){.datenav .d{font-size:19px}.barrow{grid-template-columns:92px minmax(0,1fr) 92px}}
