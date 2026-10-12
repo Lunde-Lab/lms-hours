@@ -33,7 +33,8 @@ export const ACTIVITIES = () => [
 ];
 export const LOCKED = ['line',LMS,'ass','hs','kurs','mod','ferie','avsp','annet'];
 
-export const WORK_TYPES = () => ['Sheet','Repair','Inspection'];
+/* Arbeid på LMS-føringer. Legges inn her (ingen UI for å endre listen). */
+export const WORK_TYPES = () => ['Sheet','Repair','Inspection','Mod','SLL','Testing','Final'];
 
 /* Automatisk LMS-føring starter fra denne datoen. */
 export const AUTO_FROM = '2026-01-01';

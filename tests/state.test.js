@@ -1,7 +1,7 @@
 /* LMS-standard i tilstanden: automatisk føring fyller resten av arbeidsdagen. */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, setState, setStorage, freshState, reindex, recomputeAuto } from '../src/state.js';
+import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate } from '../src/state.js';
 
 setStorage({ saveAll(){} });
 let t;
@@ -29,4 +29,8 @@ test('ingen LMS-standard på fridag eller når den er slått av', () => {
   S.noAuto['2026-01-05|' + t.id] = true;
   recomputeAuto(t.id, '2026-01-05');
   assert.equal(autos('2026-01-05').length, 0);
+});
+test('migrering legger til nye LMS-arbeid og beholder egne', () => {
+  const o = freshState(); o.work = ['Sheet', 'Eget']; const m = migrate(o);
+  assert.deepEqual(m.work, ['Sheet','Repair','Inspection','Mod','SLL','Testing','Final','Eget']);
 });

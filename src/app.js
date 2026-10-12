@@ -14,7 +14,7 @@ import * as sheet from './ui/sheet.js';
 import { dlgClick, closeDlg } from './ui/dialog.js';
 
 const ACTIONS = { tab: el => setTab(el.dataset.tab), ...foring.actions, ...kalender.actions, ...rapport.actions, ...oppsett.actions, ...sheet.actions };
-const ON_CHANGE = [foring.onChange, rapport.onChange, sheet.onChange, oppsett.onChange];
+const ON_CHANGE = [foring.onChange, rapport.onChange, sheet.onChange];
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-action]'); if (!el) return;
