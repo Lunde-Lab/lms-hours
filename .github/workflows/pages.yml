@@ -33,6 +33,14 @@ jobs:
         # config.js ligger i .gitignore. Foreløpig brukes eksempelet (STORAGE = 'local').
         # TODO (Supabase): bygg config.js fra repo-variabler (vars.SUPABASE_URL / vars.SUPABASE_ANON_KEY).
         run: cp config.example.js config.js
+      - name: Ny adresse for koden ved hver publisering
+        # Pages lar nettleseren cache filer i 10 min, og F5 i Edge henter ikke JS-modulene på nytt.
+        # Koden legges i src-<commit>/ og index.html peker dit, så F5 alltid gir siste versjon.
+        run: |
+          v="${GITHUB_SHA::8}"
+          mv src "src-$v"
+          sed -i "s#src=\"src/app.js\"#src=\"src-$v/app.js\"#; s#href=\"styles.css\"#href=\"styles.css?v=$v\"#" index.html
+          grep -q "src-$v/app.js" index.html && grep -q "styles.css?v=$v" index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
