@@ -30,7 +30,7 @@ src/state.js               tilstand S, UI, oppslag, LMS-standard (recomputeAuto/
 src/demo.js                anonyme eksempeldata
 src/util.js                dato- og formateringshjelpere
 src/prefs.js               visningsvalg per nettleser (sist brukte fane)
-src/views/                 foring, kalender, rapport, oppsett
+src/views/                 kalender (startside), foring (modal fra kalenderen), rapport, oppsett
 src/ui/                    sheet, dialog, toast, bits (små HTML-biter)
 src/storage/index.js       felles lagringsgrensesnitt + valg av adapter
 src/storage/local.js       localStorage (samme nøkkel/format som prototypen)

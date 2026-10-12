@@ -12,7 +12,7 @@ export function setStorage(adapter){ store = adapter; }
 export async function load(){ const o = await store.loadAll(); if (o) { S = o; return true; } return false; }
 export function save(){ store.saveAll(S); reindex(); }
 
-export const UI = { oppOpen:{}, rapOpen:{}, tab:'fore', date: todayIso(), showOff:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null };
+export const UI = { oppOpen:{}, rapOpen:{}, tab:'kal', dayOpen:false, date: todayIso(), showOff:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null };
 
 /* ---------- oppslag ---------- */
 let IDX = new Map();
@@ -31,7 +31,10 @@ export const stdHours = (t, date) => P.stdHours(S, t, date);
 export const extraUntil = (shift, from, days) => P.extraUntil(S, shift, from, days);
 
 export const sumH = arr => arr.reduce((a,e) => a + (+e.hours||0), 0);
-export const label = e => { const a = act(e.act); if (!a) return 'Ukjent'; return a.type === '1500H' ? (e.machine || 'LMS') + (e.work ? ' · ' + e.work : '') : a.name; };
+/* Aktiviteter som føres med maskin og arbeid: LMS, og faste aktiviteter merket mw (Line, Mod). */
+export const hasMW = a => !!a && (a.type === '1500H' || !!a.mw);
+export const mwText = e => [e.machine, e.work].filter(Boolean).join(' · ');
+export const label = e => { const a = act(e.act); if (!a) return 'Ukjent'; return hasMW(a) ? [a.name, e.machine, e.work].filter(Boolean).join(' · ') : a.name; };
 export const color = a => 'var(--a'+((a && a.color) || 7)+')';
 export const allowed = t => S.acts.filter(a => !a.role || t.roles.includes(a.role));
 export function dominant(list){
@@ -88,7 +91,7 @@ export function applyRange(techId, from, to, actId, machine = '', work = ''){
   const t = tech(techId); const a = act(actId); if (!t || !a) return 0;
   const days = rangeDays(techId, from, to); const set = new Set(days);
   S.entries = S.entries.filter(e => !(e.tech === techId && set.has(e.date)));
-  for (const d of days) S.entries.push({id:uid(), date:d, tech:techId, act:a.id, machine:a.type==='1500H'?machine:'', work:a.type==='1500H'?work:'', hours:stdHours(t, d)});
+  for (const d of days) S.entries.push({id:uid(), date:d, tech:techId, act:a.id, machine:hasMW(a)?machine:'', work:hasMW(a)?work:'', hours:stdHours(t, d)});
   reindex(); return days.length;
 }
 /* Fjerner alle føringer i perioden og slår LMS-standard på igjen (føres automatisk til og med i dag). */
@@ -110,7 +113,7 @@ export function migrate(o){
   const f = freshState();
   o.sched = f.sched; o.days = f.days; o.shifts = f.shifts; delete o.hours;
   LOCKED.forEach((id, i) => { const fa = f.acts.find(a => a.id === id); const cur = o.acts.find(a => a.id === id);
-    if (!cur) o.acts.splice(Math.min(i, o.acts.length), 0, fa); else { cur.name = fa.name; cur.role = fa.role; cur.type = fa.type; }
+    if (!cur) o.acts.splice(Math.min(i, o.acts.length), 0, fa); else { cur.name = fa.name; cur.role = fa.role; cur.type = fa.type; if (fa.mw) cur.mw = true; else delete cur.mw; }
     if (fa.role && !o.roles.includes(fa.role)) o.roles.push(fa.role); });
   o.acts = o.acts.filter(a => a.id !== 'eo'); o.entries = (o.entries || []).filter(e => e.act !== 'eo');
   for (const t of o.techs) t.roles = t.roles.filter(r => r !== 'Engine Overhaul');

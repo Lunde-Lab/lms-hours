@@ -268,6 +268,16 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line-2);bord
   main.wide{padding-bottom:20px}
   .cal-wrap{max-height:calc(100vh - 200px);overflow:auto}
 }
+/* logo */
+.brand .logo{align-self:center;flex:none}
+.logo-bg{fill:var(--accent)} .logo-fg{stroke:var(--accent-fg)}
+/* Føring som modal over kalenderen; arket for en tekniker (z-index 40) legger seg over */
+.scrim.day-scrim{z-index:30}
+.sheet.daysheet{max-width:900px;align-content:start}
+.daysheet .sheet-h{align-items:center}
+.cal thead th.day{cursor:pointer}
+.cal thead th.day:hover{background:var(--accent-soft);color:var(--accent)}
+.cal thead th.day.today:hover{background:var(--accent);color:var(--accent-fg)}
 /* toast */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:8px;z-index:60;font-weight:500;max-width:calc(100% - 32px)}
 @media (max-width:560px){.datenav .d{font-size:19px}.barrow{grid-template-columns:92px minmax(0,1fr) 92px}}
