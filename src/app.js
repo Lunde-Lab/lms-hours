@@ -12,8 +12,9 @@ import * as rapport from './views/rapport.js';
 import * as oppsett from './views/oppsett.js';
 import * as sheet from './ui/sheet.js';
 import { dlgClick, closeDlg } from './ui/dialog.js';
+import * as toastUI from './ui/toast.js';
 
-const ACTIONS = { tab: el => setTab(el.dataset.tab), ...foring.actions, ...kalender.actions, ...rapport.actions, ...oppsett.actions, ...sheet.actions };
+const ACTIONS = { tab: el => setTab(el.dataset.tab), ...foring.actions, ...kalender.actions, ...rapport.actions, ...oppsett.actions, ...sheet.actions, ...toastUI.actions };
 const ON_CHANGE = [foring.onChange, rapport.onChange, sheet.onChange];
 
 document.addEventListener('click', e => {
@@ -27,7 +28,7 @@ document.addEventListener('change', e => { for (const fn of ON_CHANGE) if (fn(e.
 document.addEventListener('keydown', e => {
   if (kalender.onKey(e)) return;
   if (e.key === 'Escape'){ if (UI.dlg) closeDlg(); else if (UI.sheet) sheet.closeSheet(); else if (UI.dayOpen){ UI.dayOpen = false; render(); } }
-  if (e.key === 'Enter' && e.target.id === 'sh-newm'){ e.preventDefault(); document.querySelector('[data-action="add-m"]')?.click(); }
+  if (e.key === 'Enter' && e.target.id === 'dlg-in'){ e.preventDefault(); document.querySelector('[data-action="dlg-ok"]')?.click(); }
 });
 
 /* config.js er lokal og ligger i .gitignore; uten den brukes config.example.js (STORAGE = 'local'). */

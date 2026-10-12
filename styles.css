@@ -109,15 +109,15 @@ h3{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
 
 /* calendar */
 .cal-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
-table.cal{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+table.cal{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .cal th,.cal td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;text-align:center}
-.cal thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);z-index:2;font-weight:500;padding:4px 0;min-width:34px;font-size:11px}
-.cal thead th .dd{display:block;color:var(--fg);font-size:12px;font-family:var(--f-mono)}
+.cal thead th{position:sticky;top:0;background:var(--surface);color:var(--muted);z-index:2;font-weight:500;padding:4px 0;min-width:34px;font-size:12px}
+.cal thead th .dd{display:block;color:var(--fg);font-size:13px;font-family:var(--f-mono)}
 .cal thead th.we{background:var(--surface-2)}
 .cal .nm{position:sticky;left:0;background:var(--surface);z-index:1;text-align:left;padding:4px 10px;white-space:nowrap;font-weight:500;min-width:160px;max-width:200px;overflow:hidden;text-overflow:ellipsis}
 .cal thead .nm{z-index:3}
 .cal tr.gap td{height:12px;background:var(--bg);border-right:0;border-bottom:1px solid var(--line-2)}
-.cal tr.grp td{font-size:11px;font-weight:600;color:var(--ph-ink);height:24px;border-bottom:1px solid var(--line-2)}
+.cal tr.grp td{font-size:12px;font-weight:600;color:var(--ph-ink);height:24px;border-bottom:1px solid var(--line-2)}
 .cal tr.grp td.nm{background:var(--surface-2);font-size:14px;font-weight:600}
 .cal td.K{background:var(--ph-k)} .cal td.H{background:var(--ph-h)} .cal td.D{background:var(--ph-d)} .cal td.F{background:var(--ph-f)}
 .cal tr.grp td.F{background:var(--surface-2)}
@@ -237,9 +237,9 @@ textarea{width:100%;min-height:90px;border:1px solid var(--line-2);border-radius
 /* stripen dekker cellens høyre kantlinje, så dager på rad henger sammen; ulike striper får et lite mellomrom */
 .cal td.cell .strip:not(.re){margin-right:-1px}
 .cal td.cell .strip.prev{opacity:.4}
-.cal td.cell .sl{position:absolute;left:6px;top:50%;transform:translateY(-50%);color:#fff;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1;pointer-events:none}
+.cal td.cell .sl{position:absolute;left:6px;top:50%;transform:translateY(-50%);color:#fff;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1;pointer-events:none}
 .cal td.cell .strip.rs .sl{left:5px}
-.cal td.cell .sl.two{display:grid;line-height:1.15;width:max-content;text-align:left}
+.cal td.cell .sl.two{display:grid;line-height:1.1;width:max-content;text-align:left}
 .cal td.cell .sl.two span{overflow:hidden;text-overflow:ellipsis}
 .cal td.cell .sl.two span+span{font-weight:500}
 .cal tbody tr:not(.grp):not(.gap) td.cell:first-of-type{border-left:0}
@@ -282,7 +282,24 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line-2);bord
 .shift-tg{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:0;background:transparent;padding:0;text-align:left;font:inherit;color:inherit}
 .shift-tg:hover .name{color:var(--accent)}
 .shift.closed .shift-h{border-bottom:0}
+/* notat: prikk i kalendercellen og i Føring, tekstfelt i arket */
+.cal td.cell .nd{position:absolute;right:3px;top:2px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--surface);pointer-events:none}
+.tech .nd{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:2px}
+textarea.note{min-height:0;font-family:var(--f-body);font-size:14px;resize:vertical}
+.dlg-l{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.field.upper{text-transform:uppercase}
+/* kalender: ukerad over datoene (datoraden legger seg under den når man ruller) */
+.cal thead tr.wk th{padding:2px 0;font-size:11px;font-weight:600;color:var(--muted);border-right:1px solid var(--line-2)}
+.cal thead tr.dt th{top:var(--wk-h,21px)}
+/* kalender: LMS uten maskin eller arbeid */
+.cal td.cell.miss .strip{box-shadow:inset 0 -3px 0 var(--warn)}
+.misses{display:flex;align-items:center;gap:8px;font-size:14px;padding:8px 12px;border-radius:8px;background:var(--warn-soft);color:var(--fg)}
+.misses i{width:14px;height:4px;border-radius:2px;background:var(--warn);flex:none}
+.misses b{color:var(--warn)}
 /* toast */
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:8px;z-index:60;font-weight:500;max-width:calc(100% - 32px)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:8px;z-index:60;font-weight:500;max-width:calc(100% - 32px);display:flex;align-items:center;gap:14px}
+.toast[hidden]{display:none}
+.toast-undo{border:1px solid currentColor;background:transparent;color:inherit;border-radius:6px;padding:3px 10px;font-weight:600}
+.toast-undo:hover{background:color-mix(in srgb, var(--surface) 15%, transparent)}
 @media (max-width:560px){.datenav .d{font-size:19px}.barrow{grid-template-columns:92px minmax(0,1fr) 92px}}
 @media (prefers-reduced-motion:no-preference){.sheet.anim{animation:up .16s ease-out}@keyframes up{from{transform:translateY(12px);opacity:.7}to{transform:none;opacity:1}}}

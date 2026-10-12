@@ -5,10 +5,15 @@
 -- Allowlist -------------------------------------------------------------------
 create table public.shift_leaders (
   user_id     uuid primary key references auth.users (id) on delete cascade,
+  -- Profil: skiftlederens eget skift. Appen viser det åpent og de andre skiftene lukket
+  -- (lette å åpne for overtid). Fylles i dashbordet sammen med allowlisten.
+  shift_id    smallint references public.shifts (id),
   created_at  timestamptz not null default now()
 );
--- RLS uten policyer: ingen klient kan lese eller endre listen, bare service role / dashbordet.
+-- RLS: en innlogget skiftleder kan bare lese sin egen rad (for profilen); bare service role / dashbordet kan endre.
 alter table public.shift_leaders enable row level security;
+create policy les_egen_profil on public.shift_leaders for select to authenticated
+  using (user_id = (select auth.uid()));
 
 -- Hjelpefunksjon i et skjema som ikke eksponeres av API-et.
 create schema if not exists private;
@@ -28,7 +33,7 @@ do $$
 declare t text;
 begin
   foreach t in array array['shifts','technicians','technician_roles','machines','work_types',
-                           'entries','no_auto','app_settings']
+                           'entries','no_auto','day_notes','app_settings']
   loop
     execute format('alter table public.%I enable row level security', t);
     execute format(

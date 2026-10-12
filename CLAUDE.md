@@ -76,7 +76,7 @@ Utkast ligger i `supabase/drafts/` (ikke `migrations/`) slik at ingenting kjøre
 - Arbeidstid: kveld man–tor 14:30–23:30 (9 t), fre 10:30–19:00 (8,5 t); helg 07:00–16:30 (9,5 t);
   dag man–tor 06:00–15:00 (9 t), fre 06:00–13:00 (7 t). Overtid på fridag: 9 t.
 - LMS-standard: automatisk LMS-føring som fyller resten av arbeidsdagen (`lmsFill`, `recomputeAuto`).
-- Faste aktiviteter (kan ikke endres eller slettes): Line, LMS, Assessor, Hot Section, Kurs, Mod, Ferie, Avspasering, Annet.
+- Faste aktiviteter (kan ikke endres eller slettes): Line, LMS, Assessor, Hot Section, Kurs, Mod, Ferie, Avspasering, Fravær (syk/fri), Annet.
 - Faste roller (kan ikke slettes): Assessor, B1, B2, CRS, Independent, RGR, Hot Section, Borescope.
 - Arbeid på LMS-føringer: Sheet, Repair, Inspection, Mod, SLL, Testing, Final (`WORK_TYPES` i `src/model.js`).
 - Aktiviteter, roller og LMS-arbeid legges inn i koden, ikke i Oppsett. Oppsett har bare teknikere/roller per tekniker, maskiner og backup.

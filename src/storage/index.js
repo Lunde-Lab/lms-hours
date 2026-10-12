@@ -3,7 +3,7 @@
    Alle adaptere eksporterer de samme funksjonene, og alle returnerer Promise:
 
    init(config)                 Klargjør adapteren. config er objektet fra config.js.
-   loadAll()                    Hele tilstanden ({techs, shifts, roles, acts, machines, work, entries, noAuto, …})
+   loadAll()                    Hele tilstanden ({techs, shifts, roles, acts, machines, work, entries, noAuto, notes, …})
                                 eller null hvis ingenting er lagret.
    saveAll(state)               Lagrer hele tilstanden. Appen bruker dette i dag, slik prototypen gjør.
    saveEntry(entry)             Ny eller endret føring: {id, date, tech, act, machine, work, hours, auto}.
@@ -17,11 +17,12 @@
    saveRoles(roles)             Hele rollelisten (strenger).
    saveWorkTypes(work)          Hele listen over LMS-arbeid (strenger).
    setNoAuto(date, techId, on)  Slår av/på automatisk LMS-standard for en tekniker på en dato.
+   setNote(date, techId, text)  Notat for en tekniker på en dato. Tom tekst sletter notatet.
 
    Når Supabase kobles på, skal kallene i appen gå over fra saveAll til de granulære funksjonene. */
 
 export const METHODS = ['init','loadAll','saveAll','saveEntry','deleteEntry','upsertTech','deleteTech',
-  'upsertActivity','deleteActivity','upsertMachine','deleteMachine','saveRoles','saveWorkTypes','setNoAuto'];
+  'upsertActivity','deleteActivity','upsertMachine','deleteMachine','saveRoles','saveWorkTypes','setNoAuto','setNote'];
 
 const ADAPTERS = {
   local: () => import('./local.js'),

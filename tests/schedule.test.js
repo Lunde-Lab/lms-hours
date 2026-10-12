@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultPlan } from '../src/model.js';
 import { phase, workHours, stdHours, extraUntil, lmsFill, cycle, timeTxt } from '../src/schedule.js';
-import { dn, isoOf } from '../src/util.js';
+import { dn, isoOf, isoWeek } from '../src/util.js';
 
 const plan = defaultPlan();
 const add = (date, n) => isoOf(dn(date) + n);
@@ -80,4 +80,11 @@ test('LMS-standard fyller resten av dagen', () => {
   assert.equal(lmsFill(7, 7), 0);
   assert.ok(lmsFill(9, 10) < 0);
   assert.equal(lmsFill(9.5, 2.25), 7.5);   // rundes til nærmeste halvtime
+});
+test('ISO-ukenummer', () => {
+  assert.equal(isoWeek('2026-01-01'), 1);    // torsdag
+  assert.equal(isoWeek('2026-01-05'), 2);
+  assert.equal(isoWeek('2026-10-12'), 42);
+  assert.equal(isoWeek('2027-01-01'), 53);   // fredag i uke 53 av 2026
+  assert.equal(isoWeek('2024-12-30'), 1);    // mandag i uke 1 av 2025
 });
