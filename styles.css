@@ -5,7 +5,7 @@
   --accent:#1F5FBF; --accent-fg:#FFFFFF; --accent-soft:#E8F0FB;
   --warn:#B25E00; --warn-soft:#FFF4E5; --ok:#1E7A46; --danger:#C0362C;
   --ph-k:#DDD5F7; --ph-h:#FAE0B8; --ph-d:#CFE4F7; --ph-f:#FFFFFF; --ph-hatch:#F3F4F6; --ph-ink:#2B2F36;
-  --a1:#2A6FDB; --a2:#5C7383; --a3:#7457C9; --a4:#C9372C; --a5:#E0702F; --a6:#14929A; --a7:#B08A1E; --a8:#2E9457; --a9:#79BD8F; --a10:#A0527A;
+  --a1:#2A6FDB; --a2:#5C7383; --a3:#7457C9; --a4:#C9372C; --a5:#E0702F; --a6:#14929A; --a7:#B08A1E; --a8:#2E9457; --a9:#79BD8F; --a10:#A0527A; --a11:#8A5A44;
   --scrim:rgba(20,24,30,.35);
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -198,7 +198,6 @@ textarea{width:100%;min-height:90px;border:1px solid var(--line-2);border-radius
 .set input[readonly]{background:var(--surface-2)}
 
 .set tr.sub td{font-weight:600;color:var(--muted);font-size:13px;padding-top:14px}
-.set .addrm{display:grid;gap:10px}
 .tlist{display:grid}
 .tl-sub{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:var(--surface-2);font-weight:600;font-size:14px;padding:10px 6px}
 .tl-sub:hover{background:var(--accent-soft)}
