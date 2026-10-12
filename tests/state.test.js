@@ -1,7 +1,7 @@
 /* LMS-standard i tilstanden: automatisk føring fyller resten av arbeidsdagen. */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, label } from '../src/state.js';
+import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, label, noteOf, setNote } from '../src/state.js';
 
 setStorage({ saveAll(){} });
 let t;
@@ -42,4 +42,12 @@ test('Line og Mod føres med maskin og arbeid, som LMS', () => {
 test('migrering gir Line og Mod maskin og arbeid i lagret tilstand', () => {
   const o = freshState(); for (const a of o.acts) delete a.mw;
   assert.equal(migrate(o).acts.find(a => a.id === 'mod').mw, true);
+});
+test('notat per tekniker og dag; tomt notat fjernes', () => {
+  setNote(t.id, '2026-01-05', 'Kurs flyttet');
+  assert.equal(noteOf(t.id, '2026-01-05'), 'Kurs flyttet');
+  assert.equal(noteOf(t.id, '2026-01-06'), '');
+  setNote(t.id, '2026-01-05', '   ');
+  assert.deepEqual(S.notes, {});
+  const o = freshState(); delete o.notes; assert.deepEqual(migrate(o).notes, {});
 });

@@ -44,7 +44,8 @@ create table public.activities (
   name           text not null,
   code           text not null check (char_length(code) between 1 and 3),
   required_role  text references public.roles (name) on update cascade on delete set null,
-  kind           text not null default 'n' check (kind in ('n', '1500H')),  -- '1500H' = LMS med maskin/arbeid
+  kind           text not null default 'n' check (kind in ('n', '1500H')),  -- '1500H' = LMS
+  machine_work   boolean not null default false,                           -- føres med maskin og arbeid (LMS, Line, Mod)
   color          smallint not null check (color between 1 and 10),         -- --a1 … --a10
   fixed          boolean not null default false,
   sort_order     integer not null default 0
@@ -72,7 +73,7 @@ create table public.entries (
   activity_id    text not null references public.activities (id) on delete cascade,
   machine        text not null default '',
   work           text not null default '',
-  hours          numeric(4,1) not null check (hours > 0),
+  hours          numeric(4,1) not null check (hours >= 0),   -- 0 t: ny linje som ikke er fylt ut ennå
   auto           boolean not null default false,   -- automatisk LMS-standard
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
@@ -100,6 +101,18 @@ create table public.no_auto (
   technician_id  uuid not null references public.technicians (id) on delete cascade,
   primary key (date, technician_id)
 );
+
+-- Notat per tekniker og dag (vises som prikk i kalenderen)
+create table public.day_notes (
+  date           date not null,
+  technician_id  uuid not null references public.technicians (id) on delete cascade,
+  note           text not null check (char_length(note) between 1 and 2000),
+  updated_at     timestamptz not null default now(),
+  updated_by     uuid default auth.uid(),
+  primary key (date, technician_id)
+);
+create trigger day_notes_touch before update on public.day_notes
+  for each row execute function public.touch_updated_at();
 
 -- Felles innstillinger (f.eks. auto_from / auto_done for autoFill)
 create table public.app_settings (
@@ -130,9 +143,10 @@ insert into public.activities (id, name, code, required_role, kind, color, fixed
   ('avsp',  'Avspasering', 'Av', null,          'n',     9, true, 8),
   ('annet', 'Annet',       'An', null,          'n',     7, true, 9)
 on conflict (id) do nothing;
+update public.activities set machine_work = true where id in ('line', 'h1500', 'mod');
 
 insert into public.work_types (name, sort_order) values
-  ('Sheet', 1), ('Repair', 2), ('Inspection', 3)
+  ('Sheet', 1), ('Repair', 2), ('Inspection', 3), ('Mod', 4), ('SLL', 5), ('Testing', 6), ('Final', 7)
 on conflict (name) do nothing;
 
 insert into public.app_settings (key, value) values

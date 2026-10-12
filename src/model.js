@@ -57,6 +57,6 @@ export function freshState(uid){
     roles:[...FIXED_ROLES],
     acts:ACTIVITIES(),
     machines:[], work:WORK_TYPES(),
-    entries:[], noAuto:{}, autoFrom: AUTO_FROM, autoDone: null
+    entries:[], noAuto:{}, notes:{}, autoFrom: AUTO_FROM, autoDone: null
   };
 }

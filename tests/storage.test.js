@@ -30,6 +30,10 @@ test('local: saveAll/loadAll og granulære endringer', async () => {
     let s = await local.loadAll();
     assert.deepEqual(s.entries.map(e => e.hours), [4]);
     assert.equal(s.noAuto['2026-01-05|t1'], true);
+    await local.setNote('2026-01-05', 't1', 'Byttet hjul');
+    assert.equal((await local.loadAll()).notes['2026-01-05|t1'], 'Byttet hjul');
+    await local.setNote('2026-01-05', 't1', '  ');
+    assert.equal((await local.loadAll()).notes['2026-01-05|t1'], undefined);
     await local.deleteTech('t1');
     s = await local.loadAll();
     assert.equal(s.techs.length, 0);

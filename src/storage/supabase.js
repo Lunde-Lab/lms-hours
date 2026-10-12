@@ -13,8 +13,8 @@ const notReady = name => () => Promise.reject(new Error(`Supabase-adapteren er i
 
 /* TODO: createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY) og sjekk innlogging */
 export const init = notReady('init');
-/* TODO: les shifts, technicians (+ technician_roles), roles, activities, machines, work_types, entries, no_auto
-   og bygg samme form som local.js gir: {techs, shifts, roles, acts, machines, work, entries, noAuto, …} */
+/* TODO: les shifts, technicians (+ technician_roles), roles, activities, machines, work_types, entries, no_auto, day_notes
+   og bygg samme form som local.js gir: {techs, shifts, roles, acts, machines, work, entries, noAuto, notes, …} */
 export const loadAll = notReady('loadAll');
 /* TODO: ikke i bruk med Supabase; erstattes av de granulære kallene under */
 export const saveAll = notReady('saveAll');
@@ -40,3 +40,5 @@ export const saveRoles = notReady('saveRoles');
 export const saveWorkTypes = notReady('saveWorkTypes');
 /* TODO: insert/delete i no_auto */
 export const setNoAuto = notReady('setNoAuto');
+/* TODO: upsert/delete i day_notes */
+export const setNote = notReady('setNote');

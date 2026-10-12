@@ -1,7 +1,7 @@
 /* Føring: én dag, alle skift, en rad per tekniker. Åpnes som modal fra kalenderen (knappen «Føring» eller en dato). */
 import { dn, isoOf, todayIso, longDate, fmtH, esc } from '../util.js';
 import { PH } from '../model.js';
-import { S, UI, act, hasMW, mwText, entriesOf, phase, workHours, timeTxt, stdHours, sumH, label, color, activeOn, workDay } from '../state.js';
+import { S, UI, act, hasMW, mwText, noteOf, entriesOf, phase, workHours, timeTxt, stdHours, sumH, label, color, activeOn, workDay } from '../state.js';
 import { render } from '../render.js';
 import { openSheet, openBulk } from '../ui/sheet.js';
 import { xtag } from '../ui/bits.js';
@@ -39,7 +39,7 @@ export function vFore(){
         const st = sum === 0 ? 'none' : sum < std ? 'part' : sum > std ? 'over' : 'full';
         const stTxt = sum === 0 ? (off ? 'Fri' : dn(date) > dn(todayIso()) ? 'Standard' : 'Ikke ført') : `${fmtH(sum)} / ${fmtH(std)} t`;
         h += `<button class="tech" data-action="open" data-t="${t.id}">
-          <span class="nm">${esc(t.name)}${xtag(t)}${off && list.length ? '<span class="xtag ot">Overtid</span>' : ''}</span>
+          <span class="nm">${esc(t.name)}${xtag(t)}${noteOf(t.id, date) ? `<i class="nd" title="${esc('Notat: ' + noteOf(t.id, date))}"></i>` : ''}${off && list.length ? '<span class="xtag ot">Overtid</span>' : ''}</span>
           <span class="hrs"><span class="status ${st} num">${stTxt}</span>${sum ? `<span class="meter ${st==='part'?'part':''}"><i style="width:${Math.min(100,sum/std*100)}%"></i></span>` : ''}</span>
           <span class="chips">${!list.length && !off && dn(date) > dn(todayIso()) && workDay(t, date) && !S.noAuto[date + '|' + t.id] ? `<span class="chip auto"><i class="dot" style="background:${color(act('h1500'))}"></i><span>LMS · standard</span><b class="num">${fmtH(std)}</b></span>` : ''}${list.map(chip).join('')}</span>
         </button>`;

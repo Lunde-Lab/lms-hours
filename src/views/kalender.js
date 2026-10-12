@@ -2,7 +2,7 @@
    og hurtigtaster M/A for LMS-dager. */
 import { isoOf, todayIso, udate, ddmm, fmtH, esc, dn, MON, WDS } from '../util.js';
 import { PH } from '../model.js';
-import { S, UI, save, act, tech, entriesOf, hasMW, mwText, phase, timeTxt, sumH, label, color, activeOn, dominant, recomputeAuto } from '../state.js';
+import { S, UI, save, act, tech, entriesOf, hasMW, mwText, noteOf, phase, timeTxt, sumH, label, color, activeOn, dominant, recomputeAuto } from '../state.js';
 import { render } from '../render.js';
 import { openSheet, openRange } from '../ui/sheet.js';
 import { toast } from '../ui/toast.js';
@@ -58,7 +58,8 @@ export function vKal(){
           const txt = st ? o.lab : ''; const sub = st ? (len > 1 ? o.sub : o.subShort) : '';
           strip = `<div class="strip${st ? ' rs' : ''}${en ? ' re' : ''}${o.prev ? ' prev' : ''}" style="background:${o.bg}">${txt ? `<span class="sl${sub ? ' two' : ''}" style="max-width:calc(${len} * 100% - 8px)">${sub ? `<span>${esc(txt)}</span><span>${esc(sub)}</span>` : esc(txt)}</span>` : ''}</div>`;
         }
-        h += `<td class="cell ${o.p} ${o.d === today ? 'today' : ''}" data-action="cell" data-t="${t.id}" data-d="${o.d}" title="${esc(t.name + ' · ' + ddmm(o.d) + ' · ' + o.ttl)}">${strip}</td>`;
+        const note = noteOf(t.id, o.d);   /* notat: liten prikk øverst til høyre, teksten i verktøytipset */
+        h += `<td class="cell ${o.p} ${o.d === today ? 'today' : ''}" data-action="cell" data-t="${t.id}" data-d="${o.d}" title="${esc(t.name + ' · ' + ddmm(o.d) + ' · ' + o.ttl + (note ? '\nNotat: ' + note : ''))}">${strip}${note ? '<i class="nd" aria-label="Har notat"></i>' : ''}</td>`;
       });
       h += `</tr>`;
     }

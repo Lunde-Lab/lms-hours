@@ -28,7 +28,7 @@ do $$
 declare t text;
 begin
   foreach t in array array['shifts','technicians','technician_roles','machines','work_types',
-                           'entries','no_auto','app_settings']
+                           'entries','no_auto','day_notes','app_settings']
   loop
     execute format('alter table public.%I enable row level security', t);
     execute format(

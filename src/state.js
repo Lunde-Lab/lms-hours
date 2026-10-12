@@ -45,6 +45,12 @@ export function dominant(list){
 export const activeOn = (t, date) => !t.extra || (date >= t.extra.from && date <= t.extra.until);
 export const workDay = (t, date) => activeOn(t, date) && phase(t.shift, date).key !== 'F';
 export const manualOf = (techId, date) => entriesOf(techId, date).filter(e => !e.auto);
+/* Notat per tekniker og dag (S.notes['dato|tekniker']). Tomt notat fjernes. */
+export const noteOf = (techId, date) => (S.notes && S.notes[date + '|' + techId]) || '';
+export function setNote(techId, date, text){
+  S.notes = S.notes || {}; const k = date + '|' + techId; const v = String(text || '').trim();
+  if (v) S.notes[k] = String(text); else delete S.notes[k];
+}
 /* Føringer på en fridag i skiftplanen er overtid. Føres som vanlig; regnes ut fra skiftplanen. */
 export const offDay = (t, date) => phase(t.shift, date).key === 'F';
 export const overtime = e => { const t = tech(e.tech); return !!t && offDay(t, e.date); };
@@ -120,6 +126,6 @@ export function migrate(o){
   o.roles = (o.roles || []).filter(r => r !== 'Engine Overhaul');
   o.roles = [...FIXED_ROLES, ...(o.roles || []).filter(r => !FIXED_ROLES.includes(r))];
   o.work = [...WORK_TYPES(), ...(o.work || []).filter(w => !WORK_TYPES().includes(w))];
-  o.noAuto = o.noAuto || {}; if (!o.autoFrom || o.autoFrom > AUTO_FROM){ o.autoFrom = AUTO_FROM; o.autoDone = null; }
+  o.noAuto = o.noAuto || {}; o.notes = o.notes || {}; if (!o.autoFrom || o.autoFrom > AUTO_FROM){ o.autoFrom = AUTO_FROM; o.autoDone = null; }
   if ((o.v || 0) < 7) for (const e of o.entries) if (e.auto){ e.machine = ''; e.work = ''; }
   o.v = VERSION; return o; }

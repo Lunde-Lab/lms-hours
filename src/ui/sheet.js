@@ -2,16 +2,15 @@
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, hasMW, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
+  sumH, label, hasMW, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
 import { render } from '../render.js';
 import { toast } from './toast.js';
-import { ask } from './dialog.js';
-import { val } from './bits.js';
+import { ask, promptText } from './dialog.js';
 
 /* ---------- åpne ---------- */
 export function openSheet(techId, date = UI.date){
   if (!S.entries.some(e => e.tech === techId && e.date === date)){ recomputeAuto(techId, date); save(); }
-  UI.sheet = {mode:'tech', tech:techId, date, act:null, machine:null, work:null, hours:0, newM:''};
+  UI.sheet = {mode:'tech', tech:techId, date, act:null, machine:null, work:null, hours:0};
   resetHours(UI.sheet);
   renderSheet();
 }
@@ -93,6 +92,14 @@ function setEntryHours(id, h, deferred){
 }
 const ready1500 = sh => sh.mode === 'tech' && hasMW(act(sh.act)) && sh.machine && sh.work;
 
+/* Legger til (eller aktiverer) maskinen. I arket for en tekniker settes den på siste føring uten maskin. */
+function addMachine(sh, n){
+  if (UI.sheet !== sh) return;
+  const m = S.machines.find(x => x.name === n); if (m) m.active = true; else S.machines.push({id:uid(), name:n, active:true});
+  if (sh.mode === 'tech'){ const tgt = entriesOf(sh.tech, sh.date).filter(e => hasMW(act(e.act)) && !e.machine).pop(); if (tgt) tgt.machine = n; save(); renderSheet(); render(); toast('Maskin ' + n + ' lagt til'); return; }
+  sh.machine = n; save(); if (ready1500(sh)) addEntry(sh); else renderSheet();
+}
+
 /* ---------- tegning ---------- */
 function actPicker(acts, sel){
   return `<div class="grid-btns">${acts.map(a => `<button class="opt" data-action="pick-act" data-a="${a.id}" aria-pressed="${sel===a.id}"><i class="dot" style="background:${color(a)}"></i>${esc(a.name)}</button>`).join('')}</div>`;
@@ -101,8 +108,8 @@ function h1500Picker(sh){
   const ms = S.machines.filter(m => m.active);
   return `<div class="sec"><h3>Maskin</h3><div class="pills">
       ${ms.map(m => `<button class="pill reg" data-action="pick-m" data-m="${esc(m.name)}" aria-pressed="${sh.machine===m.name}">${esc(m.name)}</button>`).join('')}
-      <span class="inline-add"><input id="sh-newm" type="text" placeholder="Ny maskin" value="${esc(sh.newM||'')}" aria-label="Ny maskin"><button class="pill" data-action="add-m">Legg til</button></span>
-    </div>${ms.length ? '' : '<div class="muted" style="font-size:13px">Ingen aktive maskiner ennå. Skriv registreringen over.</div>'}</div>
+      <button class="pill" data-action="new-m">+ Ny maskin</button>
+    </div>${ms.length ? '' : '<div class="muted" style="font-size:13px">Ingen aktive maskiner ennå. Trykk «+ Ny maskin».</div>'}</div>
     <div class="sec"><h3>Arbeid</h3><div class="pills">${S.work.map(w => `<button class="pill" data-action="pick-w" data-w="${esc(w)}" aria-pressed="${sh.work===w}">${esc(w)}</button>`).join('')}</div></div>`;
 }
 export function renderSheet(){
@@ -170,12 +177,13 @@ export function renderSheet(){
         ${list.length ? list.map(e => `<div class="entry ${e.id === UI.flash ? 'flash' : ''}"><i class="edot" style="background:${color(act(e.act))}"></i>${hasMW(act(e.act)) ? `<span class="lbl two">${entryLabel(e)}</span>` : `<span class="lbl">${entryLabel(e)}${e.auto ? '<span class="atag">standard</span>' : ''}</span>`}
           <span class="stepper"><button class="icon-btn sm" data-action="step" data-e="${e.id}" data-d="-0.5" aria-label="En halv time mindre">−</button><input class="hours-in" type="text" inputmode="decimal" id="eh-${e.id}" data-eh="${e.id}" value="${fmtH(e.hours)}" aria-label="Timer ${esc(label(e))}"><button class="icon-btn sm" data-action="step" data-e="${e.id}" data-d="0.5" aria-label="En halv time mer">+</button></span>
           <button class="icon-btn sm danger del" data-action="del" data-e="${e.id}" aria-label="Slett ${esc(label(e))}">×</button></div>`).join('') : '<div class="hint">Ingenting ført ennå.</div>'}
-        ${list.some(e => hasMW(act(e.act))) ? `<div class="row newm"><input type="text" id="sh-newm" class="field" placeholder="Ny maskin, f.eks. ONX" value="${esc(sh.newM || '')}" aria-label="Ny maskin"><button class="btn sm" data-action="add-m">Legg til maskin</button></div>` : ''}
+        ${list.some(e => hasMW(act(e.act))) ? `<div class="row newm"><button class="btn sm" data-action="new-m">+ Legg til maskin</button></div>` : ''}
       </div>
       <div class="sec addbox"><h3>Legg til aktivitet</h3>
         ${actPicker(allowed(t), sh.act)}
         <div class="hint">${(() => { const rm = openHours(t, sh.date); return rm > 0 ? `Legges til med ${fmtH(rm)} t.` : 'Legges til som ny linje med 0 t.'; })()} ${offDay(t, sh.date) ? 'Fridag: alt som føres her regnes som overtid.' : 'LMS standard fyller automatisk resten av dagen.'} Juster timene på raden.</div>
       </div>
+      <div class="sec"><h3><label for="sh-note">Notat</label></h3><textarea id="sh-note" class="note" rows="2" placeholder="Notat for dagen (vises som prikk i kalenderen)">${esc(noteOf(t.id, sh.date))}</textarea></div>
       <div class="sheet-f"><button class="btn primary" data-action="close">Ferdig</button></div>`;
   }
   const prev = ov.querySelector('.sheet'); const prevScroll = prev ? prev.scrollTop : 0;
@@ -204,9 +212,8 @@ export const actions = {
   /* trykk på valgt maskin/arbeid igjen for å fjerne valget (Line/Mod kan føres uten) */
   'pick-m'(el, sh){ sh.machine = sh.machine === el.dataset.m && sh.mode !== 'tech' ? null : el.dataset.m; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
   'pick-w'(el, sh){ sh.work = sh.work === el.dataset.w && sh.mode !== 'tech' ? null : el.dataset.w; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
-  'add-m'(el, sh){ const n = val('sh-newm').toUpperCase(); if (!n) return; if (!S.machines.some(m => m.name === n)) S.machines.push({id:uid(), name:n, active:true}); else S.machines.find(m => m.name===n).active = true; sh.newM = '';
-    if (sh.mode === 'tech'){ const tgt = entriesOf(sh.tech, sh.date).filter(e => hasMW(act(e.act)) && !e.machine).pop(); if (tgt) tgt.machine = n; save(); renderSheet(); render(); toast('Maskin ' + n + ' lagt til'); return; }
-    sh.machine = n; save(); if (ready1500(sh)) addEntry(sh); else renderSheet(); },
+  /* ny maskin i egen liten dialog */
+  'new-m'(el, sh){ promptText({title:'Ny maskin', label:'Registrering', placeholder:'F.eks. ONX', ok:'Legg til', upper:true, fn:n => addMachine(sh, n)}); },
   step(el){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (e0) setEntryHours(e0.id, +e0.hours + +el.dataset.d); },
   del(el, sh){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (!e0) return; const t0 = tech(sh.tech);
     ask({title:'Slette føringen?', text:label(e0)+' · '+fmtH(e0.hours)+' t for '+t0.name+' '+ddmm(sh.date)+'.', ok:'Slett', fn:() => {
@@ -232,7 +239,7 @@ export const actions = {
 };
 
 export function onInput(el){
-  if (el.id === 'sh-newm' && UI.sheet){ UI.sheet.newM = el.value; return true; }
+  if (el.id === 'sh-note' && UI.sheet && UI.sheet.mode === 'tech'){ setNote(UI.sheet.tech, UI.sheet.date, el.value); save(); return true; }
   if (UI.sheet && UI.sheet.mode === 'extra' && /^ex-/.test(el.id)){
     const k = {'ex-name':'name','ex-shift':'shift','ex-from':'from','ex-days':'days'}[el.id]; if (!k) return true;
     if (k === 'from' && !el.value) return true;

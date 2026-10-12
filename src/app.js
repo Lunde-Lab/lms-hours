@@ -27,7 +27,7 @@ document.addEventListener('change', e => { for (const fn of ON_CHANGE) if (fn(e.
 document.addEventListener('keydown', e => {
   if (kalender.onKey(e)) return;
   if (e.key === 'Escape'){ if (UI.dlg) closeDlg(); else if (UI.sheet) sheet.closeSheet(); else if (UI.dayOpen){ UI.dayOpen = false; render(); } }
-  if (e.key === 'Enter' && e.target.id === 'sh-newm'){ e.preventDefault(); document.querySelector('[data-action="add-m"]')?.click(); }
+  if (e.key === 'Enter' && e.target.id === 'dlg-in'){ e.preventDefault(); document.querySelector('[data-action="dlg-ok"]')?.click(); }
 });
 
 /* config.js er lokal og ligger i .gitignore; uten den brukes config.example.js (STORAGE = 'local'). */

@@ -282,6 +282,12 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line-2);bord
 .shift-tg{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:0;background:transparent;padding:0;text-align:left;font:inherit;color:inherit}
 .shift-tg:hover .name{color:var(--accent)}
 .shift.closed .shift-h{border-bottom:0}
+/* notat: prikk i kalendercellen og i Føring, tekstfelt i arket */
+.cal td.cell .nd{position:absolute;right:3px;top:2px;width:7px;height:7px;border-radius:50%;background:var(--warn);border:1.5px solid var(--surface);pointer-events:none}
+.tech .nd{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:6px;vertical-align:2px}
+textarea.note{min-height:0;font-family:var(--f-body);font-size:14px;resize:vertical}
+.dlg-l{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+.field.upper{text-transform:uppercase}
 /* toast */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:8px;z-index:60;font-weight:500;max-width:calc(100% - 32px)}
 @media (max-width:560px){.datenav .d{font-size:19px}.barrow{grid-template-columns:92px minmax(0,1fr) 92px}}
