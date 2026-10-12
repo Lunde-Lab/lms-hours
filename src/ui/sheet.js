@@ -203,7 +203,7 @@ export const actions = {
   'pick-m'(el, sh){ sh.machine = sh.machine === el.dataset.m && sh.mode !== 'tech' ? null : el.dataset.m; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
   'pick-w'(el, sh){ sh.work = sh.work === el.dataset.w && sh.mode !== 'tech' ? null : el.dataset.w; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
   /* ny maskin i egen liten dialog */
-  'new-m'(el, sh){ promptText({title:'Ny maskin', label:'Registrering', placeholder:'F.eks. ONX', ok:'Legg til', upper:true, fn:n => addMachine(sh, n)}); },
+  'new-m'(el, sh){ promptText({title:'Ny maskin', label:'Registrering', placeholder:'F.eks. ONA', ok:'Legg til', upper:true, fn:n => addMachine(sh, n)}); },
   step(el){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (e0) setEntryHours(e0.id, +e0.hours + +el.dataset.d); },
   del(el, sh){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (!e0) return; const t0 = tech(sh.tech);
     ask({title:'Slette føringen?', text:label(e0)+' · '+fmtH(e0.hours)+' t for '+t0.name+' '+ddmm(sh.date)+'.', ok:'Slett', fn:() => {

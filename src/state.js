@@ -145,7 +145,10 @@ export function migrate(o){
   for (const t of o.techs) t.roles = t.roles.filter(r => r !== 'Engine Overhaul');
   o.roles = (o.roles || []).filter(r => r !== 'Engine Overhaul');
   o.roles = [...FIXED_ROLES, ...(o.roles || []).filter(r => !FIXED_ROLES.includes(r))];
-  const ms = o.machines || [];
+  /* OWS het egentlig ONS; ONX og ONZ var gamle eksempelmaskiner */
+  const ms = (o.machines || []).filter(m => !['ONX','ONZ'].includes(m.name) && !(m.name === 'OWS' && o.machines.some(x => x.name === 'ONS')));
+  for (const m of ms) if (m.name === 'OWS') m.name = 'ONS';
+  for (const e of o.entries || []) if (e.machine === 'OWS') e.machine = 'ONS';
   o.machines = [...FIXED_MACHINES.map(n => ms.find(m => m.name === n) || {id:uid(), name:n, active:false}), ...ms.filter(m => !FIXED_MACHINES.includes(m.name))];
   o.work = [...WORK_TYPES(), ...(o.work || []).filter(w => !WORK_TYPES().includes(w))];
   o.profiles = migrateProfiles(o.profiles, uid);
