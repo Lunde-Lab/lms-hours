@@ -1,4 +1,4 @@
-/* Arket som glir opp nederst: føring for én tekniker, «Sett alle», ekstra personell, roller og kopier. */
+/* Arket som glir opp nederst: føring for én tekniker, flere dager, ekstra personell, roller og kopier. */
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
@@ -12,11 +12,6 @@ export function openSheet(techId, date = UI.date){
   if (!S.entries.some(e => e.tech === techId && e.date === date)){ recomputeAuto(techId, date); save(); }
   UI.sheet = {mode:'tech', tech:techId, date, act:null, machine:null, work:null, hours:0};
   resetHours(UI.sheet);
-  renderSheet();
-}
-export function openBulk(shiftId){
-  const ts = S.techs.filter(t => t.shift === shiftId && activeOn(t, UI.date) && manualOf(t.id,UI.date).length === 0);
-  UI.sheet = {mode:'bulk', shift:shiftId, date:UI.date, act:null, machine:null, work:null, count:ts.length};
   renderSheet();
 }
 /* flere dager for én tekniker, valgt ved å dra i kalenderen */
@@ -122,13 +117,6 @@ export function renderSheet(){
   if (sh.mode === 'copy'){
     body = `<div class="sheet-h"><div><div class="t">Kopier</div><div class="s">Marker teksten og kopier den manuelt.</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       <div class="sec"><textarea id="copy-txt" readonly>${esc(sh.text)}</textarea></div>`;
-  } else if (sh.mode === 'bulk'){
-    const s = shiftOf(sh.shift); const ph = phase(s.id, sh.date);
-    const a = act(sh.act); const ok = a && (a.type !== '1500H' || (sh.machine && sh.work)) && sh.count > 0;   /* LMS krever maskin og arbeid, Line/Mod ikke */
-    body = `<div class="sheet-h"><div><div class="t">Sett alle · ${esc(s.name)}</div><div class="s">${esc(longDate(sh.date))} · ${PH[ph.key]} ${timeTxt(ph.key,sh.date)} · ${sh.count} teknikere med bare LMS standard får hel dag (${fmtH(workHours(ph.key,sh.date))} t)</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
-      <div class="sec"><h3>Aktivitet</h3>${actPicker(S.acts.filter(x => !x.role), sh.act)}</div>
-      ${hasMW(a) ? h1500Picker(sh) : ''}
-      <div class="sheet-f"><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="bulk-apply" ${ok?'':'disabled'}>Sett ${sh.count} teknikere</button></div>`;
   } else if (sh.mode === 'range'){
     const t = tech(sh.tech); const days = rangeDays(t.id, sh.from, sh.to);
     const off = days.length > 0 && !workDay(t, days[0]);
@@ -222,13 +210,6 @@ export const actions = {
       S.entries = S.entries.filter(x => x.id !== e0.id); if (e0.auto) S.noAuto[e0.date + '|' + e0.tech] = true; recomputeAuto(e0.tech, e0.date); save();
       resetHours(sh);
       renderSheet(); render(); toastUndo('Føring slettet', snap); }}); },
-  'bulk-apply'(el, sh){
-    const a = act(sh.act); let n = 0; const snap = snapshot();
-    for (const t of S.techs.filter(t => t.shift === sh.shift && activeOn(t, sh.date) && manualOf(t.id, sh.date).length === 0)){
-      S.entries = S.entries.filter(e => !(e.tech === t.id && e.date === sh.date && e.auto));
-      S.entries.push({id:uid(), date:sh.date, tech:t.id, act:a.id, machine:hasMW(a)?sh.machine||'':'', work:hasMW(a)?sh.work||'':'', hours:stdHours(t, sh.date)}); n++;
-    }
-    save(); closeSheet(); toastUndo(n + ' teknikere satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · '), snap); },
   'range-apply'(el, sh){
     const a = act(sh.act); if (!a) return; const snap = snapshot();
     const n = applyRange(sh.tech, sh.from, sh.to, a.id, sh.machine || '', sh.work || ''); save(); closeSheet();

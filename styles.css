@@ -19,10 +19,21 @@ button{cursor:pointer}
 
 /* app bar */
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
-.bar-in{max-width:1200px;margin:0 auto;padding-inline:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
+.bar-in{margin:0 auto;padding-inline:16px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;padding-block:10px}
 .brand{font-weight:600;font-size:17px;display:flex;align-items:baseline;gap:8px}
 .brand small{font-size:12px;font-weight:400;color:var(--muted)}
-.tabs{display:flex;gap:2px;margin-left:auto;overflow-x:auto;max-width:100%}
+.tabs{display:flex;gap:2px;overflow-x:auto;max-width:100%}
+/* appbar: logo til venstre, faner i midten, profil til høyre; på smal skjerm ligger fanene på egen rad */
+.brand{grid-column:1;justify-self:start;white-space:nowrap}
+.tabs{grid-column:2;grid-row:1}
+.who{grid-column:3;grid-row:1;justify-self:end;display:flex;align-items:center;gap:8px;min-width:0}
+.who > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:700px){
+  .bar-in{grid-template-columns:1fr auto;gap:8px 16px}
+  .who{grid-column:2}
+  .who-r{display:none}
+  .tabs{grid-column:1/-1;grid-row:2;justify-self:center}
+}
 .tab{border:0;background:transparent;padding:7px 12px;border-radius:6px;font-weight:500;color:var(--muted);white-space:nowrap}
 .tab:hover{color:var(--fg);background:var(--surface-2)}
 .tab[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
@@ -271,20 +282,8 @@ kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line-2);bord
 /* logo */
 .brand .logo{align-self:center;flex:none}
 .logo-bg{fill:var(--accent)} .logo-fg{stroke:var(--accent-fg)}
-/* Føring som modal over kalenderen; arket for en tekniker (z-index 40) legger seg over */
-.scrim.day-scrim{z-index:30}
-.sheet.daysheet{max-width:900px;align-content:start}
-.daysheet .sheet-h{align-items:center}
-.cal thead th.day{cursor:pointer}
-.cal thead th.day:hover{background:var(--accent-soft);color:var(--accent)}
-.cal thead th.day.today:hover{background:var(--accent);color:var(--accent-fg)}
-/* Føring: skift som kan åpnes/lukkes */
-.shift-tg{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:0;background:transparent;padding:0;text-align:left;font:inherit;color:inherit}
-.shift-tg:hover .name{color:var(--accent)}
-.shift.closed .shift-h{border-bottom:0}
-/* notat: prikk i kalendercellen og i Føring, tekstfelt i arket */
+/* notat: prikk i kalendercellen, tekstfelt i arket */
 .cal td.cell .nd{position:absolute;right:3px;top:2px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--surface);pointer-events:none}
-.tech .nd{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:2px}
 textarea.note{min-height:0;font-family:var(--f-body);font-size:14px;resize:vertical}
 .dlg-l{display:grid;gap:4px;font-size:13px;color:var(--muted)}
 .field.upper{text-transform:uppercase}

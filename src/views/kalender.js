@@ -16,12 +16,12 @@ export function vKal(){
   const cols = days.length + 1;
   let missing = 0;
   let h = `<div class="row" style="justify-content:space-between">
-     <div class="row"><button class="icon-btn" data-action="cal" data-d="-1" aria-label="Forrige måned">‹</button><button class="icon-btn" data-action="cal" data-d="1" aria-label="Neste måned">›</button><h2>${MON[m-1]} ${y}</h2>${UI.cal !== today.slice(0,7) ? '<button class="btn sm" data-action="cal-today">I dag</button>' : ''}<button class="btn sm" data-action="day-open" data-d="${today}">Dagsoversikt</button><button class="btn sm" data-action="extra" data-from="${days.includes(today) ? today : days[0]}">+ Ekstra personell</button></div>
+     <div class="row"><button class="icon-btn" data-action="cal" data-d="-1" aria-label="Forrige måned">‹</button><button class="icon-btn" data-action="cal" data-d="1" aria-label="Neste måned">›</button><h2>${MON[m-1]} ${y}</h2>${UI.cal !== today.slice(0,7) ? '<button class="btn sm" data-action="cal-today">I dag</button>' : ''}<button class="btn sm" data-action="extra" data-from="${days.includes(today) ? today : days[0]}">+ Ekstra personell</button></div>
      <div class="legend">
      ${S.acts.map(a => `<span><i class="sw" style="background:${color(a)};border-color:transparent"></i>${esc(a.name)}</span>`).join('')}</div></div>`;
   /* ukerad over datoene: «Uke 42» over dagene i hver uke */
   const weeks = []; for (const d of days){ const w = isoWeek(d); if (weeks.length && weeks[weeks.length-1].w === w) weeks[weeks.length-1].n++; else weeks.push({w, n:1}); }
-  h += `MISSING<div class="cal-wrap"><table class="cal"><thead><tr class="wk"><th class="nm"></th>${weeks.map(x => `<th colspan="${x.n}">${x.n > 1 ? 'Uke ' : 'U'}${x.w}</th>`).join('')}</tr><tr class="dt"><th class="nm">Tekniker</th>${days.map(d => { const u = udate(d); const wd = u.getUTCDay(); return `<th class="day ${d===today?'today':''} ${wd===0||wd===6?'we':''}" data-action="day-open" data-d="${d}" title="Dagsoversikt ${ddmm(d)}"><span class="dd">${u.getUTCDate()}</span>${WDS[wd]}</th>`; }).join('')}</tr></thead><tbody>`;
+  h += `MISSING<div class="cal-wrap"><table class="cal"><thead><tr class="wk"><th class="nm"></th>${weeks.map(x => `<th colspan="${x.n}">${x.n > 1 ? 'Uke ' : 'U'}${x.w}</th>`).join('')}</tr><tr class="dt"><th class="nm">Tekniker</th>${days.map(d => { const u = udate(d); const wd = u.getUTCDay(); return `<th class="day ${d===today?'today':''} ${wd===0||wd===6?'we':''}"><span class="dd">${u.getUTCDate()}</span>${WDS[wd]}</th>`; }).join('')}</tr></thead><tbody>`;
   S.shifts.forEach((s, i) => {
     if (i) h += `<tr class="gap"><td class="nm"></td><td colspan="${cols-1}"></td></tr>`;
     h += `<tr class="grp"><td class="nm">${esc(s.name)}</td>${days.map(d => { const p = phase(s.id,d).key; return `<td class="${p} ${d===today?'today':''}">${p==='F'?'':p}</td>`; }).join('')}</tr>`;
@@ -68,7 +68,7 @@ export function vKal(){
       h += `</tr>`;
     }
   });
-  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den, eller på datoen øverst for å se hele dagen for alle. Flere dager på én rad: dra over dem, eller klikk på første dag og hold <kbd>Shift</kbd> mens du klikker på siste.</div>`;
+  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den. Flere dager på én rad: dra over dem, eller klikk på første dag og hold <kbd>Shift</kbd> mens du klikker på siste.</div>`;
   return h.replace('MISSING', missing ? `<div class="misses"><i></i><b>${missing} ${missing === 1 ? 'dag' : 'dager'}</b> i ${MON[m-1]} har LMS uten maskin eller arbeid. De er markert med oransje strek.</div>` : '');
 }
 
@@ -119,6 +119,6 @@ document.addEventListener('pointercancel', () => { drag = null; markSel(); });
 
 /* Escape avbryter dra-markeringen. true hvis tasten ble brukt */
 export function onKey(e){
-  if ((drag || anchor) && e.key === 'Escape' && !UI.sheet && !UI.dlg && !UI.dayOpen){ drag = null; anchor = null; markSel(); return true; }
+  if ((drag || anchor) && e.key === 'Escape' && !UI.sheet && !UI.dlg ){ drag = null; anchor = null; markSel(); return true; }
   return false;
 }

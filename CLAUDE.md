@@ -32,7 +32,7 @@ src/demo.js                anonyme eksempeldata
 src/util.js                dato- og formateringshjelpere
 src/prefs.js               visningsvalg per nettleser (sist brukte fane og profil)
 src/profiles.js            profiler og tilgang: roller (admin, skiftleder), sjekker, migrering
-src/views/                 kalender (startside), foring (modal fra kalenderen), rapport, oppsett, profil (velg profil + admin)
+src/views/                 kalender (startside), rapport, oppsett, profil (velg profil + admin)
 src/ui/                    sheet, dialog, toast, bits (små HTML-biter)
 src/storage/index.js       felles lagringsgrensesnitt + valg av adapter
 src/storage/local.js       localStorage (samme nøkkel/format som prototypen)

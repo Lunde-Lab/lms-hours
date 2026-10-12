@@ -13,7 +13,7 @@ export function setStorage(adapter){ store = adapter; }
 export async function load(){ const o = await store.loadAll(); if (o) { S = o; return true; } return false; }
 export function save(){ store.saveAll(S); reindex(); }
 
-export const UI = { oppOpen:{}, rapOpen:{}, tab:'kal', dayOpen:false, date: todayIso(), foreOpen:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null, me:null };
+export const UI = { oppOpen:{}, rapOpen:{}, tab:'kal', date: todayIso(), cal: todayIso().slice(0,7), from:null, to:null, sheet:null, me:null };
 
 /* Innlogget profil (UI.me er profil-id). null = ingen tilgang, appen viser «Velg profil». */
 export const me = () => profileOf(S && S.profiles, UI.me);
