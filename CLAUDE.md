@@ -88,7 +88,7 @@ Utkast ligger i `supabase/drafts/` (ikke `migrations/`) slik at ingenting kjøre
 - Faste aktiviteter (kan ikke endres eller slettes): Line, LMS, Assessor, Assessment, Hot Section, Kurs, Mod, Ferie, Avspasering, Fravær (syk/fri), Annet.
 - Faste roller (kan ikke slettes): Assessor, B1, B2, CRS, Independent, RGR, Hot Section, Borescope.
 - Arbeid på LMS-føringer: Sheet, Repair, Inspection, Mod, SLL, Testing, Final (`WORK_TYPES` i `src/model.js`).
-- Faste maskiner (`FIXED_MACHINES`, starter som «Ferdig»; Oppsett har bare status, ingen legg til/fjern): OIA, OIB, OIC, OIE, OIF, OIG, OIH, OII, OIK, OIM, OIN, OMI, ONA, OND, ONE, ONH, ONM, ONO, ONP, ONQ, ONT, ONW, ONY, OWS.
+- Faste maskiner (`FIXED_MACHINES`, starter som «Ferdig»; Oppsett har bare status, ingen legg til/fjern): OIA, OIB, OIC, OIE, OIF, OIG, OIH, OII, OIK, OIM, OIN, OMI, ONA, OND, ONE, ONH, ONM, ONO, ONP, ONQ, ONT, ONW, ONY, ONS.
 - Aktiviteter, roller og LMS-arbeid legges inn i koden, ikke i Oppsett. Oppsett har bare teknikere/roller per tekniker, maskinstatus og (for admin) profiler.
 - Teknikermodalen (Oppsett → trykk på tekniker): skift (flytt mellom skift, føringene beholdes), roller og «Fjern tekniker».
 - Ekstra personell: tekniker med `extra: {from, until}`, aktiv på skiftet i perioden.

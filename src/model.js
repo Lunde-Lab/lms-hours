@@ -37,7 +37,7 @@ export const ACTIVITIES = () => [
 export const LOCKED = ['line',LMS,'ass','assm','hs','kurs','mod','ferie','avsp','fravaer','annet'];
 
 /* Faste maskiner. Starter som «Ferdig»; settes «I dokk» i Oppsett for å vises ved føring. */
-export const FIXED_MACHINES = ['OIA','OIB','OIC','OIE','OIF','OIG','OIH','OII','OIK','OIM','OIN','OMI','ONA','OND','ONE','ONH','ONM','ONO','ONP','ONQ','ONT','ONW','ONY','OWS'];
+export const FIXED_MACHINES = ['OIA','OIB','OIC','OIE','OIF','OIG','OIH','OII','OIK','OIM','OIN','OMI','ONA','OND','ONE','ONH','ONM','ONO','ONP','ONQ','ONT','ONW','ONY','ONS'];
 export const fixedMachines = uid => FIXED_MACHINES.map(name => ({id:uid(), name, active:false}));
 
 /* Arbeid på LMS-føringer. Legges inn her (ingen UI for å endre listen). */
