@@ -1,11 +1,9 @@
 /* Føring: én dag, alle skift, en rad per tekniker. Åpnes som modal fra kalenderen (knappen «Føring» eller en dato). */
 import { dn, isoOf, todayIso, longDate, fmtH, esc } from '../util.js';
 import { PH } from '../model.js';
-import { S, UI, setState, freshState, act, hasMW, mwText, entriesOf, phase, workHours, timeTxt, stdHours, sumH, label, color, activeOn, workDay, autoFill } from '../state.js';
+import { S, UI, act, hasMW, mwText, entriesOf, phase, workHours, timeTxt, stdHours, sumH, label, color, activeOn, workDay } from '../state.js';
 import { render } from '../render.js';
 import { openSheet, openBulk } from '../ui/sheet.js';
-import { ask } from '../ui/dialog.js';
-import { toast } from '../ui/toast.js';
 import { xtag } from '../ui/bits.js';
 
 export function vFore(){
@@ -25,16 +23,16 @@ export function vFore(){
     const ts = S.techs.filter(t => t.shift === s.id && activeOn(t, date));
     const done = ts.filter(t => sumH(entriesOf(t.id,date)) >= stdHours(t,date)).length;
     const off = ph.key === 'F';
-    h += `<section class="panel shift">
+    const open = !!UI.foreOpen[s.id];   /* skiftene er lukket til man åpner dem */
+    h += `<section class="panel shift${open ? '' : ' closed'}">
       <div class="shift-h">
-        <span class="name">${esc(s.name)}</span>
-        <span class="phase ${ph.key}">${PH[ph.key]} ${ph.idx}/${ph.len}${off ? '' : ' · ' + timeTxt(ph.key,date) + ' · ' + fmtH(workHours(ph.key,date)) + ' t'}</span>
-        ${off ? '' : `<span class="progress num">${done}/${ts.length} ført</span>`}
+        <button class="shift-tg" data-action="shift-toggle" data-s="${s.id}" aria-expanded="${open}"><span class="chev2">${open ? '▾' : '▸'}</span><span class="name">${esc(s.name)}</span>
+        <span class="phase ${ph.key}">${PH[ph.key]} ${ph.idx}/${ph.len}${off ? ' · overtid' : ' · ' + timeTxt(ph.key,date) + ' · ' + fmtH(workHours(ph.key,date)) + ' t'}</span>
+        ${off ? '' : `<span class="progress num">${done}/${ts.length} ført</span>`}</button>
         <span class="spacer"></span>
-        ${off ? `<button class="btn sm" data-action="toggle-off" data-s="${s.id}">${UI.showOff[s.id] ? 'Skjul' : 'Vis for overtid'}</button>`
-              : `<button class="btn sm" data-action="extra" data-s="${s.id}">+ Ekstra personell</button><button class="btn sm" data-action="bulk" data-s="${s.id}">Sett alle…</button>`}
+        ${off ? '' : `<button class="btn sm" data-action="extra" data-s="${s.id}">+ Ekstra personell</button><button class="btn sm" data-action="bulk" data-s="${s.id}">Sett alle…</button>`}
       </div>`;
-    if (!off || UI.showOff[s.id]) {
+    if (open) {
       h += `<div class="techs">`;
       for (const t of ts){
         const list = entriesOf(t.id, date); const sum = sumH(list); const std = stdHours(t,date);
@@ -61,18 +59,15 @@ function chip(e){
   return `<span class="chip two ${e.auto ? 'auto' : ''}">${dot}<span class="cl"><span>${esc(a.name)}</span><small>${esc(sub)}</small></span>${h}</span>`;
 }
 
-export const demoBanner = () => S.demo ? `<div class="banner"><b>Eksempeldata.</b> Timer, roller og maskiner er fylt inn for å vise hvordan det fungerer. <button class="btn sm" data-action="clear-demo">Tøm eksempeldata</button></div>` : '';
-
 export const actions = {
   'day-open'(el){ UI.dayOpen = true; if (el.dataset.d) UI.date = el.dataset.d; render(); },
   'day-close'(){ UI.dayOpen = false; render(); },
   'day-scrim'(el, sh, e){ if (e.target === el){ UI.dayOpen = false; render(); } },
   day(el){ UI.date = isoOf(dn(UI.date) + +el.dataset.d); render(); },
   today(){ UI.date = todayIso(); render(); },
-  'toggle-off'(el){ UI.showOff[el.dataset.s] = !UI.showOff[el.dataset.s]; render(); },
+  'shift-toggle'(el){ UI.foreOpen[el.dataset.s] = !UI.foreOpen[el.dataset.s]; render(); },
   open(el){ openSheet(el.dataset.t); },
-  bulk(el){ openBulk(+el.dataset.s); },
-  'clear-demo'(){ ask({title:'Tømme eksempeldata?', text:'Alle eksempelføringer, maskiner og roller fjernes. Teknikerlisten blir stående.', ok:'Tøm', fn:() => { setState(freshState()); autoFill(); render(); toast('Eksempeldata fjernet'); }}); }
+  bulk(el){ openBulk(+el.dataset.s); }
 };
 
 export function onChange(el){
