@@ -2,9 +2,9 @@
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, hasMW, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
+  sumH, label, hasMW, lacksMW, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
 import { render } from '../render.js';
-import { toast } from './toast.js';
+import { toast, toastUndo, snapshot } from './toast.js';
 import { ask, promptText } from './dialog.js';
 
 /* ---------- åpne ---------- */
@@ -54,7 +54,8 @@ function extraPreview(sh){
 function entryLabel(e){
   const a = act(e.act); if (!hasMW(a)) return esc(label(e));
   const ms = S.machines.filter(m => m.active || m.name === e.machine).map(m => m.name);
-  return `<span class="ln1">${esc(a.name)}${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
+  const miss = f => lacksMW(e) && e.date <= todayIso() && !e[f] ? ' miss' : '';   /* tomt felt som må fylles ut */
+  return `<span class="ln1">${esc(a.name)}${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini${miss('machine')}" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini${miss('work')}" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
 }
 
 /* ---------- føringer ---------- */
@@ -217,23 +218,24 @@ export const actions = {
   step(el){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (e0) setEntryHours(e0.id, +e0.hours + +el.dataset.d); },
   del(el, sh){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (!e0) return; const t0 = tech(sh.tech);
     ask({title:'Slette føringen?', text:label(e0)+' · '+fmtH(e0.hours)+' t for '+t0.name+' '+ddmm(sh.date)+'.', ok:'Slett', fn:() => {
+      const snap = snapshot();
       S.entries = S.entries.filter(x => x.id !== e0.id); if (e0.auto) S.noAuto[e0.date + '|' + e0.tech] = true; recomputeAuto(e0.tech, e0.date); save();
       resetHours(sh);
-      renderSheet(); render(); toast('Føring slettet'); }}); },
+      renderSheet(); render(); toastUndo('Føring slettet', snap); }}); },
   'bulk-apply'(el, sh){
-    const a = act(sh.act); let n = 0;
+    const a = act(sh.act); let n = 0; const snap = snapshot();
     for (const t of S.techs.filter(t => t.shift === sh.shift && activeOn(t, sh.date) && manualOf(t.id, sh.date).length === 0)){
       S.entries = S.entries.filter(e => !(e.tech === t.id && e.date === sh.date && e.auto));
       S.entries.push({id:uid(), date:sh.date, tech:t.id, act:a.id, machine:hasMW(a)?sh.machine||'':'', work:hasMW(a)?sh.work||'':'', hours:stdHours(t, sh.date)}); n++;
     }
-    save(); closeSheet(); toast(n + ' teknikere satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · ')); },
+    save(); closeSheet(); toastUndo(n + ' teknikere satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · '), snap); },
   'range-apply'(el, sh){
-    const a = act(sh.act); if (!a) return;
+    const a = act(sh.act); if (!a) return; const snap = snapshot();
     const n = applyRange(sh.tech, sh.from, sh.to, a.id, sh.machine || '', sh.work || ''); save(); closeSheet();
-    toast(tech(sh.tech).name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ': ' + n + ' ' + (n === 1 ? 'dag' : 'dager') + ' satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · ')); },
+    toastUndo(tech(sh.tech).name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ': ' + n + ' ' + (n === 1 ? 'dag' : 'dager') + ' satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · '), snap); },
   'range-clear'(el, sh){ const t0 = tech(sh.tech);
     ask({title:'Nullstille dagene?', text:'Alle føringer for ' + t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' fjernes. LMS standard fyller arbeidsdagene igjen.', ok:'Nullstill', fn:() => {
-      clearRange(sh.tech, sh.from, sh.to); save(); closeSheet(); toast(t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' nullstilt'); }}); },
+      const snap = snapshot(); clearRange(sh.tech, sh.from, sh.to); save(); closeSheet(); toastUndo(t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' nullstilt', snap); }}); },
   roles(el){ UI.sheet = {mode:'roles', tech:el.dataset.t}; renderSheet(); },
   role(el){ const t = tech(el.dataset.t); const r = el.dataset.r; t.roles = t.roles.includes(r) ? t.roles.filter(x => x !== r) : [...t.roles, r]; t.roles.sort((x, y) => S.roles.indexOf(x) - S.roles.indexOf(y)); save(); if (UI.sheet) renderSheet(); render(); }
 };

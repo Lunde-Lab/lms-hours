@@ -1,10 +1,11 @@
 /* Kalender: måned per tekniker med fargestriper per aktivitet, og dra over flere dager på én rad. */
-import { isoOf, todayIso, udate, ddmm, fmtH, esc, dn, MON, WDS } from '../util.js';
+import { isoOf, todayIso, udate, ddmm, fmtH, esc, dn, isoWeek, MON, WDS } from '../util.js';
 import { PH } from '../model.js';
-import { S, UI, act, entriesOf, hasMW, mwText, noteOf, phase, timeTxt, sumH, label, color, activeOn, dominant } from '../state.js';
+import { S, UI, act, entriesOf, hasMW, mwText, lacksMW, noteOf, phase, timeTxt, sumH, label, color, activeOn, dominant } from '../state.js';
 import { render } from '../render.js';
 import { openSheet, openRange } from '../ui/sheet.js';
 import { xtag } from '../ui/bits.js';
+import { toast } from '../ui/toast.js';
 
 export function vKal(){
   const [y,m] = UI.cal.split('-').map(Number);
@@ -13,11 +14,14 @@ export function vKal(){
   const days = Array.from({length:nd}, (_,i) => isoOf(first+i));
   const today = todayIso();
   const cols = days.length + 1;
+  let missing = 0;
   let h = `<div class="row" style="justify-content:space-between">
-     <div class="row"><button class="icon-btn" data-action="cal" data-d="-1" aria-label="Forrige måned">‹</button><button class="icon-btn" data-action="cal" data-d="1" aria-label="Neste måned">›</button><h2>${MON[m-1]} ${y}</h2><button class="btn sm" data-action="day-open" data-d="${today}">Dagsoversikt</button><button class="btn sm" data-action="extra" data-from="${days.includes(today) ? today : days[0]}">+ Ekstra personell</button></div>
+     <div class="row"><button class="icon-btn" data-action="cal" data-d="-1" aria-label="Forrige måned">‹</button><button class="icon-btn" data-action="cal" data-d="1" aria-label="Neste måned">›</button><h2>${MON[m-1]} ${y}</h2>${UI.cal !== today.slice(0,7) ? '<button class="btn sm" data-action="cal-today">I dag</button>' : ''}<button class="btn sm" data-action="day-open" data-d="${today}">Dagsoversikt</button><button class="btn sm" data-action="extra" data-from="${days.includes(today) ? today : days[0]}">+ Ekstra personell</button></div>
      <div class="legend">
      ${S.acts.map(a => `<span><i class="sw" style="background:${color(a)};border-color:transparent"></i>${esc(a.name)}</span>`).join('')}</div></div>`;
-  h += `<div class="cal-wrap"><table class="cal"><thead><tr><th class="nm">Tekniker</th>${days.map(d => { const u = udate(d); const wd = u.getUTCDay(); return `<th class="day ${d===today?'today':''} ${wd===0||wd===6?'we':''}" data-action="day-open" data-d="${d}" title="Dagsoversikt ${ddmm(d)}"><span class="dd">${u.getUTCDate()}</span>${WDS[wd]}</th>`; }).join('')}</tr></thead><tbody>`;
+  /* ukerad over datoene: «Uke 42» over dagene i hver uke */
+  const weeks = []; for (const d of days){ const w = isoWeek(d); if (weeks.length && weeks[weeks.length-1].w === w) weeks[weeks.length-1].n++; else weeks.push({w, n:1}); }
+  h += `MISSING<div class="cal-wrap"><table class="cal"><thead><tr class="wk"><th class="nm"></th>${weeks.map(x => `<th colspan="${x.n}">${x.n > 1 ? 'Uke ' : 'U'}${x.w}</th>`).join('')}</tr><tr class="dt"><th class="nm">Tekniker</th>${days.map(d => { const u = udate(d); const wd = u.getUTCDay(); return `<th class="day ${d===today?'today':''} ${wd===0||wd===6?'we':''}" data-action="day-open" data-d="${d}" title="Dagsoversikt ${ddmm(d)}"><span class="dd">${u.getUTCDate()}</span>${WDS[wd]}</th>`; }).join('')}</tr></thead><tbody>`;
   S.shifts.forEach((s, i) => {
     if (i) h += `<tr class="gap"><td class="nm"></td><td colspan="${cols-1}"></td></tr>`;
     h += `<tr class="grp"><td class="nm">${esc(s.name)}</td>${days.map(d => { const p = phase(s.id,d).key; return `<td class="${p} ${d===today?'today':''}">${p==='F'?'':p}</td>`; }).join('')}</tr>`;
@@ -28,6 +32,8 @@ export function vKal(){
         const p = phase(s.id, d).key; const list = entriesOf(t.id, d).filter(e => +e.hours > 0);   /* linjer med 0 t vises ikke i kalenderen */
         const o = {d, p, key:'', bg:'', lab:'', sub:'', subShort:'', prev:false,
           ttl: list.length ? list.map(e => label(e) + ' ' + fmtH(e.hours) + ' t').join(', ') + (p === 'F' ? ' · overtid' : '') : (p === 'F' ? 'Fri' : PH[p] + ' ' + timeTxt(p, d))};
+        /* LMS uten maskin eller arbeid (i dag og bakover): oransje strek under stripen */
+        o.miss = d <= today && list.some(lacksMW); if (o.miss){ missing++; o.ttl += '\nMangler maskin eller arbeid'; }
         if (list.length){
           const {act:a0} = dominant(list); const tot = sumH(list) || 1;
           /* teksten viser aktiviteten med flest timer (på delte dager også), og føringen med flest timer av den */
@@ -57,22 +63,25 @@ export function vKal(){
           strip = `<div class="strip${st ? ' rs' : ''}${en ? ' re' : ''}${o.prev ? ' prev' : ''}" style="background:${o.bg}">${txt ? `<span class="sl${sub ? ' two' : ''}" style="max-width:calc(${len} * 100% - 8px)">${sub ? `<span>${esc(txt)}</span><span>${esc(sub)}</span>` : esc(txt)}</span>` : ''}</div>`;
         }
         const note = noteOf(t.id, o.d);   /* notat: liten prikk øverst til høyre, teksten i verktøytipset */
-        h += `<td class="cell ${o.p} ${o.d === today ? 'today' : ''}" data-action="cell" data-t="${t.id}" data-d="${o.d}" title="${esc(t.name + ' · ' + ddmm(o.d) + ' · ' + o.ttl + (note ? '\nNotat: ' + note : ''))}">${strip}${note ? '<i class="nd" aria-label="Har notat"></i>' : ''}</td>`;
+        h += `<td class="cell ${o.p} ${o.d === today ? 'today' : ''}${o.miss ? ' miss' : ''}" data-action="cell" data-t="${t.id}" data-d="${o.d}" title="${esc(t.name + ' · ' + ddmm(o.d) + ' · ' + o.ttl + (note ? '\nNotat: ' + note : ''))}">${strip}${note ? '<i class="nd" aria-label="Har notat"></i>' : ''}</td>`;
       });
       h += `</tr>`;
     }
   });
-  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den, eller på datoen øverst for å føre hele dagen for alle. Dra over flere dager på én rad for å føre dem samtidig.</div>`;
-  return h;
+  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den, eller på datoen øverst for å se hele dagen for alle. Flere dager på én rad: dra over dem, eller klikk på første dag og hold <kbd>Shift</kbd> mens du klikker på siste.</div>`;
+  return h.replace('MISSING', missing ? `<div class="misses"><i></i><b>${missing} ${missing === 1 ? 'dag' : 'dager'}</b> i ${MON[m-1]} har LMS uten maskin eller arbeid. De er markert med oransje strek.</div>` : '');
 }
 
 export const actions = {
-  cell(el){ if (!dragged) openSheet(el.dataset.t, el.dataset.d); },
+  cell(el){ if (dragged) return; anchor = {t: el.dataset.t, d: el.dataset.d}; openSheet(el.dataset.t, el.dataset.d); },
+  'cal-today'(){ UI.cal = todayIso().slice(0,7); render(); },
   cal(el){ let [y,m] = UI.cal.split('-').map(Number); m += +el.dataset.d; if (m < 1){ m = 12; y--; } if (m > 12){ m = 1; y++; } UI.cal = y+'-'+String(m).padStart(2,'0'); render(); }
 };
 
 /* ---------- dra: velg flere dager på samme rad (bare mus/penn; berøring ruller som før) ---------- */
 let drag = null, dragged = false;
+/* Shift+klikk: første dag (anker) settes ved vanlig klikk eller Shift+klikk; Shift+klikk på en annen dag i samme rad velger perioden */
+let anchor = null, shiftDown = false;
 function markSel(){
   for (const td of document.querySelectorAll('.cal td.cell.sel')) td.classList.remove('sel');
   if (!drag) return;
@@ -83,6 +92,12 @@ document.addEventListener('pointerdown', e => {
   if (e.button !== 0 || e.pointerType === 'touch' || UI.tab !== 'kal') return;
   const td = e.target.closest && e.target.closest('td.cell[data-t]'); if (!td) return;
   e.preventDefault();   /* ingen tekstmarkering mens man drar */
+  if (e.shiftKey){
+    shiftDown = true; const t = td.dataset.t, d = td.dataset.d;
+    if (anchor && anchor.t === t && anchor.d !== d){ const [a, b] = [anchor.d, d].sort(); anchor = null; markSel(); setTimeout(() => openRange(t, a, b), 0); }
+    else { anchor = {t, d}; markSel(); td.classList.add('sel'); toast('Hold Shift og klikk på siste dag'); }
+    return;
+  }
   drag = {t: td.dataset.t, from: td.dataset.d, to: td.dataset.d, row: td.parentElement};
   markSel();
 });
@@ -93,6 +108,7 @@ document.addEventListener('pointermove', e => {
   if (td && td.dataset.d !== drag.to){ drag.to = td.dataset.d; markSel(); }
 });
 document.addEventListener('pointerup', () => {
+  if (shiftDown){ shiftDown = false; dragged = true; setTimeout(() => { dragged = false; }, 0); return; }   /* klikket etter Shift+klikk åpner ikke én dag */
   if (!drag) return; const d = drag; drag = null; markSel();
   if (d.from === d.to) return;   /* vanlig klikk: data-action="cell" åpner dagen */
   const [a, b] = [d.from, d.to].sort();
@@ -103,6 +119,6 @@ document.addEventListener('pointercancel', () => { drag = null; markSel(); });
 
 /* Escape avbryter dra-markeringen. true hvis tasten ble brukt */
 export function onKey(e){
-  if (drag && e.key === 'Escape'){ drag = null; markSel(); return true; }
+  if ((drag || anchor) && e.key === 'Escape' && !UI.sheet && !UI.dlg && !UI.dayOpen){ drag = null; anchor = null; markSel(); return true; }
   return false;
 }

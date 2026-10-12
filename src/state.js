@@ -34,6 +34,8 @@ export const sumH = arr => arr.reduce((a,e) => a + (+e.hours||0), 0);
 /* Aktiviteter som føres med maskin og arbeid: LMS, og faste aktiviteter merket mw (Line, Mod). */
 export const hasMW = a => !!a && (a.type === '1500H' || !!a.mw);
 export const mwText = e => [e.machine, e.work].filter(Boolean).join(' · ');
+/* LMS-timer uten maskin eller arbeid: det skiftlederen må fylle ut (gjelder fra og med i dag og bakover) */
+export const lacksMW = e => act(e.act)?.type === '1500H' && +e.hours > 0 && (!e.machine || !e.work);
 export const label = e => { const a = act(e.act); if (!a) return 'Ukjent'; return hasMW(a) ? [a.name, e.machine, e.work].filter(Boolean).join(' · ') : a.name; };
 export const color = a => 'var(--a'+((a && a.color) || 7)+')';
 export const allowed = t => S.acts.filter(a => !a.role || t.roles.includes(a.role));

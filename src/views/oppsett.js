@@ -4,7 +4,7 @@ import { esc, uid } from '../util.js';
 import { S, UI, setState, freshState, save, tech, shiftOf, autoFill, migrate } from '../state.js';
 import { render } from '../render.js';
 import { ask } from '../ui/dialog.js';
-import { toast, copy } from '../ui/toast.js';
+import { toast, toastUndo, snapshot, copy } from '../ui/toast.js';
 import { val } from '../ui/bits.js';
 
 export function vOpp(){
@@ -38,7 +38,7 @@ export const actions = {
   'add-tech'(){ const n = val('new-tech'); if (!n){ toast('Skriv navnet på teknikeren'); return; } const sid = +val('new-tech-s')||1; S.techs.push({id:uid(), name:n, shift:sid, roles:[]}); save(); render(); toast(n+' lagt til på '+shiftOf(sid).name); },
   'rm-tech'(){ const id = val('rm-tech'); if (!id){ toast('Velg en tekniker å fjerne'); return; } const t0 = tech(id); const n = S.entries.filter(x => x.tech === id).length;
     ask({title:'Fjerne '+t0.name+'?', text: n ? n+' føringer for '+t0.name.split(' ')[0]+' blir også slettet.' : 'Teknikeren fjernes fra føring, kalender og rapport.', ok:'Fjern', fn:() => {
-      S.techs = S.techs.filter(x => x.id !== id); S.entries = S.entries.filter(x => x.tech !== id); for (const k in S.notes || {}) if (k.endsWith('|' + id)) delete S.notes[k]; save(); render(); toast(t0.name+' fjernet'); }}); },
+      const snap = snapshot(); S.techs = S.techs.filter(x => x.id !== id); S.entries = S.entries.filter(x => x.tech !== id); for (const k in S.notes || {}) if (k.endsWith('|' + id)) delete S.notes[k]; save(); render(); toastUndo(t0.name+' fjernet', snap); }}); },
   'add-m2'(){ const n = val('new-m').toUpperCase(); if (!n || S.machines.some(m => m.name === n)) return; S.machines.push({id:uid(), name:n, active:true}); save(); render(); },
   'm-active'(el){ const m = S.machines.find(m => m.id === el.dataset.m); m.active = !m.active; save(); render(); },
   'del-m'(el){ const id = el.dataset.m; const m0 = S.machines.find(x => x.id === id);

@@ -1,7 +1,7 @@
 /* LMS-standard i tilstanden: automatisk føring fyller resten av arbeidsdagen. */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, label, noteOf, setNote } from '../src/state.js';
+import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, lacksMW, label, noteOf, setNote } from '../src/state.js';
 
 setStorage({ saveAll(){} });
 let t;
@@ -56,4 +56,11 @@ test('Fravær er en fast aktivitet og legges til i lagret tilstand', () => {
   const m = migrate(o);
   assert.deepEqual(m.acts.map(a => a.id), ['line','h1500','ass','hs','kurs','mod','ferie','avsp','fravaer','annet']);
   assert.equal(m.acts.find(a => a.id === 'fravaer').name, 'Fravær');
+});
+test('LMS uten maskin eller arbeid mangler noe; Line uten maskin gjør ikke det', () => {
+  assert.equal(lacksMW({act:'h1500', machine:'', work:'', hours:9}), true);
+  assert.equal(lacksMW({act:'h1500', machine:'ONX', work:'', hours:9}), true);
+  assert.equal(lacksMW({act:'h1500', machine:'ONX', work:'Sheet', hours:9}), false);
+  assert.equal(lacksMW({act:'h1500', machine:'', work:'', hours:0}), false);
+  assert.equal(lacksMW({act:'line', machine:'', work:'', hours:9}), false);
 });

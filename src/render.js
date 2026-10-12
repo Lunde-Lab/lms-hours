@@ -15,6 +15,7 @@ export function render(){
   v.className = UI.tab === 'kal' ? 'wide' : '';
   v.innerHTML = UI.tab === 'kal' ? vKal() : UI.tab === 'rap' ? vRap() : vOpp();
   if (UI.tab === 'kal'){ const w = v.querySelector('.cal-wrap'); const td = v.querySelector('thead th.today');
+    const wk = v.querySelector('thead tr.wk'); if (wk && w) w.style.setProperty('--wk-h', wk.offsetHeight + 'px');   /* datoraden legger seg under ukeraden */
     if (w && keep !== null){ w.scrollLeft = keep; w.scrollTop = keepY; window.scrollTo(0, py); } else if (td && w) w.scrollLeft = Math.max(0, td.offsetLeft - 240);
     UI.calShown = UI.cal; } else UI.calShown = null;
   renderDay();

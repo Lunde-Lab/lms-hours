@@ -8,6 +8,8 @@ export const dn = s => { const [y,m,d] = s.split('-').map(Number); return Math.r
 export const isoOf = n => new Date(n*DAY).toISOString().slice(0,10);
 export const todayIso = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 export const udate = s => new Date(dn(s)*DAY);
+/* ISO-ukenummer (uke 1 er uka med årets første torsdag) */
+export const isoWeek = s => { const n = dn(s); const thu = n - (udate(s).getUTCDay() + 6) % 7 + 3; const jan1 = dn(new Date(thu*DAY).getUTCFullYear() + '-01-01'); return 1 + Math.floor((thu - jan1) / 7); };
 export const ddmm = s => { const d = udate(s); return String(d.getUTCDate()).padStart(2,'0')+'.'+String(d.getUTCMonth()+1).padStart(2,'0'); };
 export const longDate = s => { const d = udate(s); return WD[d.getUTCDay()]+' '+d.getUTCDate()+'. '+MON[d.getUTCMonth()]; };
 export const fmtH = h => (Math.round(h*10)/10).toLocaleString('nb-NO');

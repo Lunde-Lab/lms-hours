@@ -12,8 +12,9 @@ import * as rapport from './views/rapport.js';
 import * as oppsett from './views/oppsett.js';
 import * as sheet from './ui/sheet.js';
 import { dlgClick, closeDlg } from './ui/dialog.js';
+import * as toastUI from './ui/toast.js';
 
-const ACTIONS = { tab: el => setTab(el.dataset.tab), ...foring.actions, ...kalender.actions, ...rapport.actions, ...oppsett.actions, ...sheet.actions };
+const ACTIONS = { tab: el => setTab(el.dataset.tab), ...foring.actions, ...kalender.actions, ...rapport.actions, ...oppsett.actions, ...sheet.actions, ...toastUI.actions };
 const ON_CHANGE = [foring.onChange, rapport.onChange, sheet.onChange];
 
 document.addEventListener('click', e => {
