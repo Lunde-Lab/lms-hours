@@ -74,6 +74,36 @@ export function autoFill(){
   S.autoDone = isoOf(today); save();
 }
 
+/* ---------- flere dager for én tekniker (dra i kalenderen) ---------- */
+/* Datoene en områdeføring gjelder: arbeidsdagene i perioden, eller alle aktive dager (overtid) hvis perioden bare er fri. */
+export function rangeDays(techId, from, to){
+  const t = tech(techId); if (!t) return [];
+  const all = []; for (let n = dn(from); n <= dn(to); n++){ const d = isoOf(n); if (activeOn(t, d)) all.push(d); }
+  const work = all.filter(d => workDay(t, d));
+  return work.length ? work : all;
+}
+/* Erstatter alle føringer på dagene med én hel dag av aktiviteten. Gir antall dager. */
+export function applyRange(techId, from, to, actId, machine = '', work = ''){
+  const t = tech(techId); const a = act(actId); if (!t || !a) return 0;
+  const days = rangeDays(techId, from, to); const set = new Set(days);
+  S.entries = S.entries.filter(e => !(e.tech === techId && set.has(e.date)));
+  for (const d of days) S.entries.push({id:uid(), date:d, tech:techId, act:a.id, machine:a.type==='1500H'?machine:'', work:a.type==='1500H'?work:'', hours:stdHours(t, d)});
+  reindex(); return days.length;
+}
+/* Fjerner alle føringer i perioden og slår LMS-standard på igjen (føres automatisk til og med i dag). */
+export function clearRange(techId, from, to){
+  const t = tech(techId); if (!t) return 0;
+  const today = todayIso(); let n = 0;
+  for (let i = dn(from); i <= dn(to); i++){ const d = isoOf(i);
+    const before = S.entries.length;
+    S.entries = S.entries.filter(e => !(e.tech === techId && e.date === d));
+    if (S.entries.length !== before || S.noAuto[d + '|' + techId]) n++;
+    delete S.noAuto[d + '|' + techId];
+    if (d <= today) recomputeAuto(techId, d);
+  }
+  reindex(); return n;
+}
+
 /* ---------- migrering av lagret tilstand ---------- */
 export function migrate(o){
   const f = freshState();

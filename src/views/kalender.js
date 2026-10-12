@@ -1,9 +1,10 @@
-/* Kalender: måned per tekniker med fargestriper per aktivitet, og hurtigtaster M/A for LMS-dager. */
+/* Kalender: måned per tekniker med fargestriper per aktivitet, dra over flere dager på én rad,
+   og hurtigtaster M/A for LMS-dager. */
 import { isoOf, todayIso, udate, ddmm, fmtH, esc, dn, MON, WDS } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, entriesOf, phase, timeTxt, sumH, label, color, activeOn, dominant, recomputeAuto } from '../state.js';
 import { render } from '../render.js';
-import { openSheet } from '../ui/sheet.js';
+import { openSheet, openRange } from '../ui/sheet.js';
 import { toast } from '../ui/toast.js';
 import { xtag } from '../ui/bits.js';
 
@@ -59,14 +60,44 @@ export function vKal(){
       h += `</tr>`;
     }
   });
-  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den. Hurtigtast: hold musepekeren over en LMS-dag og trykk <kbd>M</kbd> for å bytte maskin, <kbd>A</kbd> for å bytte arbeid (Shift baklengs).</div>`;
+  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den. Dra over flere dager på én rad for å føre dem samtidig. Hurtigtast: hold musepekeren over en LMS-dag og trykk <kbd>M</kbd> for å bytte maskin, <kbd>A</kbd> for å bytte arbeid (Shift baklengs).</div>`;
   return h;
 }
 
 export const actions = {
-  cell(el){ openSheet(el.dataset.t, el.dataset.d); },
+  cell(el){ if (!dragged) openSheet(el.dataset.t, el.dataset.d); },
   cal(el){ let [y,m] = UI.cal.split('-').map(Number); m += +el.dataset.d; if (m < 1){ m = 12; y--; } if (m > 12){ m = 1; y++; } UI.cal = y+'-'+String(m).padStart(2,'0'); render(); }
 };
+
+/* ---------- dra: velg flere dager på samme rad (bare mus/penn; berøring ruller som før) ---------- */
+let drag = null, dragged = false;
+function markSel(){
+  for (const td of document.querySelectorAll('.cal td.cell.sel')) td.classList.remove('sel');
+  if (!drag) return;
+  const [a, b] = [drag.from, drag.to].sort();
+  for (const td of drag.row.querySelectorAll('td.cell[data-d]')) if (td.dataset.d >= a && td.dataset.d <= b) td.classList.add('sel');
+}
+document.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || e.pointerType === 'touch' || UI.tab !== 'kal') return;
+  const td = e.target.closest && e.target.closest('td.cell[data-t]'); if (!td) return;
+  e.preventDefault();   /* ingen tekstmarkering mens man drar */
+  drag = {t: td.dataset.t, from: td.dataset.d, to: td.dataset.d, row: td.parentElement};
+  markSel();
+});
+/* Pekeren kan gli over en annen rad; da brukes bare datoen (kolonnen), raden er den man startet på. */
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const td = e.target.closest && e.target.closest('td.cell[data-d]');
+  if (td && td.dataset.d !== drag.to){ drag.to = td.dataset.d; markSel(); }
+});
+document.addEventListener('pointerup', () => {
+  if (!drag) return; const d = drag; drag = null; markSel();
+  if (d.from === d.to) return;   /* vanlig klikk: data-action="cell" åpner dagen */
+  const [a, b] = [d.from, d.to].sort();
+  dragged = true;   /* klikket som følger slippet skal ikke åpne én dag */
+  setTimeout(() => { dragged = false; openRange(d.t, a, b); }, 0);
+});
+document.addEventListener('pointercancel', () => { drag = null; markSel(); });
 
 /* ---------- hurtigtaster: M / A blar i maskin / arbeid på LMS-dagen under musepekeren ---------- */
 document.addEventListener('mouseover', e => {
@@ -88,6 +119,7 @@ function cycleLms(field, dir){
 }
 /* true hvis tasten ble brukt */
 export function onKey(e){
+  if (drag && e.key === 'Escape'){ drag = null; markSel(); return true; }
   if (UI.tab === 'kal' && UI.hover && !UI.sheet && !UI.dlg && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)){
     const k = e.key.toLowerCase();
     if (k === 'm' || k === 'a'){ e.preventDefault(); cycleLms(k === 'm' ? 'machine' : 'work', e.shiftKey ? -1 : 1); return true; }
