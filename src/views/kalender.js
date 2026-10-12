@@ -18,7 +18,7 @@ export function vKal(){
   let h = `<div class="row" style="justify-content:space-between">
      <div class="row"><button class="icon-btn" data-action="cal" data-d="-1" aria-label="Forrige måned">‹</button><button class="icon-btn" data-action="cal" data-d="1" aria-label="Neste måned">›</button><h2>${MON[m-1]} ${y}</h2><button class="btn sm" data-action="extra" data-from="${days.includes(today) ? today : days[0]}">+ Ekstra personell</button></div>
      <div class="legend">
-     ${S.acts.map(a => `<span><i class="sw" style="background:${color(a)};border-color:transparent"></i>${esc(a.name)}</span>`).join('')}<span>● = delt dag</span></div></div>`;
+     ${S.acts.map(a => `<span><i class="sw" style="background:${color(a)};border-color:transparent"></i>${esc(a.name)}</span>`).join('')}</div></div>`;
   h += `<div class="cal-wrap"><table class="cal"><thead><tr><th class="nm">Tekniker</th>${days.map(d => { const u = udate(d); const wd = u.getUTCDay(); return `<th class="${d===today?'today':''} ${wd===0||wd===6?'we':''}"><span class="dd">${u.getUTCDate()}</span>${WDS[wd]}</th>`; }).join('')}</tr></thead><tbody>`;
   S.shifts.forEach((s, i) => {
     if (i) h += `<tr class="gap"><td class="nm"></td><td colspan="${cols-1}"></td></tr>`;
@@ -28,18 +28,20 @@ export function vKal(){
       const info = days.map(d => {
         if (!activeOn(t, d)) return {d, out:true};
         const p = phase(s.id, d).key; const list = entriesOf(t.id, d);
-        const o = {d, p, key:'', bg:'', lab:'', short:'', prev:false, split:false,
+        const o = {d, p, key:'', bg:'', lab:'', short:'', sub:'', subShort:'', prev:false,
           ttl: list.length ? list.map(e => label(e) + ' ' + fmtH(e.hours) + ' t').join(', ') : (p === 'F' ? 'Fri' : PH[p] + ' ' + timeTxt(p, d))};
         if (list.length){
           const {act:a0} = dominant(list); const tot = sumH(list) || 1;
           if (list.length > 1){
             let x = 0; o.bg = 'linear-gradient(90deg,' + list.map(e => { const c = color(act(e.act)); const f = x; x += (+e.hours || 0) / tot * 100; return `${c} ${f}% ${x}%`; }).join(',') + ')';
-            o.key = 'split|' + d; o.split = true; o.short = '';
+            o.key = 'split|' + d; o.short = '';
           } else {
             const e = list[0]; const is15 = a0 && a0.type === '1500H';
-            o.bg = color(a0); o.key = (a0 ? a0.id : '?') + (is15 ? '|' + (e.machine || '') : '');
-            o.lab = is15 ? (e.machine || 'LMS') : (a0 ? a0.name : '?');
-            o.short = is15 ? (e.machine || 'LMS') : (a0 ? a0.code : '?');
+            o.bg = color(a0); o.key = (a0 ? a0.id : '?') + (is15 ? '|' + (e.machine || '') + '|' + (e.work || '') : '');
+            o.lab = is15 ? 'LMS' : (a0 ? a0.name : '?');
+            o.short = is15 ? 'LMS' : (a0 ? a0.code : '?');
+            /* LMS på to linjer: «LMS» øverst, maskin og arbeid under */
+            if (is15){ o.sub = [e.machine, e.work].filter(Boolean).join(' · '); o.subShort = e.machine || e.work || ''; }
           }
         } else if (d > today && p !== 'F' && !S.noAuto[d + '|' + t.id]){
           o.bg = color(act('h1500')); o.key = 'prev'; o.prev = true; o.lab = 'LMS'; o.short = 'LMS';
@@ -52,8 +54,8 @@ export function vKal(){
         if (o.key){
           const st = i === 0 || info[i-1].key !== o.key, en = i === info.length - 1 || info[i+1].key !== o.key;
           let len = 1; if (st) while (i + len < info.length && info[i+len].key === o.key) len++;
-          const txt = st ? (len > 1 ? o.lab : o.short) : '';
-          strip = `<div class="strip${st ? ' rs' : ''}${en ? ' re' : ''}${o.prev ? ' prev' : ''}" style="background:${o.bg}">${txt ? `<span class="sl" style="max-width:calc(${len} * 100% - 8px)">${esc(txt)}</span>` : ''}${o.split ? '<i class="sd"></i>' : ''}</div>`;
+          const txt = st ? (len > 1 ? o.lab : o.short) : ''; const sub = st ? (len > 1 ? o.sub : o.subShort) : '';
+          strip = `<div class="strip${st ? ' rs' : ''}${en ? ' re' : ''}${o.prev ? ' prev' : ''}" style="background:${o.bg}">${txt ? `<span class="sl${sub ? ' two' : ''}" style="max-width:calc(${len} * 100% - 8px)">${sub ? `<span>${esc(txt)}</span><span>${esc(sub)}</span>` : esc(txt)}</span>` : ''}</div>`;
         }
         h += `<td class="cell ${o.p} ${o.d === today ? 'today' : ''}" data-action="cell" data-t="${t.id}" data-d="${o.d}" title="${esc(t.name + ' · ' + ddmm(o.d) + ' · ' + o.ttl)}">${strip}</td>`;
       });
