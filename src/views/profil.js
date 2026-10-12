@@ -21,7 +21,7 @@ export function vLogin(){
 /* Innlogget profil i appbaren */
 export function vWho(){
   const p = me(); if (!p) return '';
-  return `<span class="muted" style="font-size:13px">${esc(p.name === roleText(p) ? p.name : p.name + ' · ' + roleText(p))}</span><button class="btn sm" data-action="logout">Bytt profil</button>`;
+  return `<span class="muted" style="font-size:13px">${esc(p.name)}${p.name === roleText(p) ? '' : `<span class="who-r"> · ${esc(roleText(p))}</span>`}</span><button class="icon-btn sm" data-action="logout" aria-label="Bytt profil" title="Bytt profil"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5"/><path d="M15 12H4"/></svg></button>`;
 }
 
 /* Panel i Oppsett: bare for admin */
