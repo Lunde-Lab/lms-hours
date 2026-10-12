@@ -33,18 +33,17 @@ export function vProfiles(){
     ${S.profiles.map(p => `<tr><td>${esc(p.name)}${p.id === UI.me ? ' <span class="muted">(deg)</span>' : ''}</td><td><span class="rtag">${esc(roleText(p))}</span></td><td>${esc(shiftTxt(p)) || '<span class="muted">–</span>'}</td><td>${p.id === UI.me ? '' : `<button class="btn sm danger" data-action="prof-rm" data-p="${p.id}">Fjern</button>`}</td></tr>`).join('')}
     </tbody></table>
     <div class="row"><input type="text" id="new-prof" class="field" placeholder="Navn på ny profil"><select id="new-prof-r" class="field" style="flex:0 0 auto;min-width:0">${Object.entries(ROLES).map(([k, v]) => `<option value="${k}"${k === 'leader' ? ' selected' : ''}>${v}</option>`).join('')}</select><select id="new-prof-s" class="field" style="flex:0 0 auto;min-width:0" aria-label="Skift">${opts}</select><button class="btn" data-action="prof-add">Legg til</button></div>
-    <div class="muted" style="font-size:13px">Skiftet bestemmer hvilket skift som er åpent i Dagsoversikt. Admin har ikke eget skift.</div></section>`;
+    <div class="muted" style="font-size:13px">Skiftet er skiftlederens eget skift. Admin har ikke eget skift.</div></section>`;
 }
 
 export function login(id){
   const p = profileOf(S.profiles, id); if (!p) return false;
   UI.me = p.id; savePref('profile', p.id);
-  UI.foreOpen = p.shift ? {[p.shift]: true} : {};   /* eget skift åpent i Dagsoversikt */
   return true;
 }
 export function logout(){
   UI.me = null; savePref('profile', '');
-  UI.sheet = null; UI.dayOpen = false; renderSheet(); closeDlg();
+  UI.sheet = null; renderSheet(); closeDlg();
 }
 
 /* Handlinger som bare admin kan gjøre (sjekkes i app.js før handlingen kjøres) */
