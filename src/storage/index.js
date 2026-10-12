@@ -18,11 +18,13 @@
    saveWorkTypes(work)          Hele listen over LMS-arbeid (strenger).
    setNoAuto(date, techId, on)  Slår av/på automatisk LMS-standard for en tekniker på en dato.
    setNote(date, techId, text)  Notat for en tekniker på en dato. Tom tekst sletter notatet.
+   upsertProfile(profile)       {id, name, role: 'admin' | 'leader', shift} (se src/profiles.js). Bare admin.
+   deleteProfile(id)            Fjerner tilgangen. Bare admin.
 
    Når Supabase kobles på, skal kallene i appen gå over fra saveAll til de granulære funksjonene. */
 
 export const METHODS = ['init','loadAll','saveAll','saveEntry','deleteEntry','upsertTech','deleteTech',
-  'upsertActivity','deleteActivity','upsertMachine','deleteMachine','saveRoles','saveWorkTypes','setNoAuto','setNote'];
+  'upsertActivity','deleteActivity','upsertMachine','deleteMachine','saveRoles','saveWorkTypes','setNoAuto','setNote','upsertProfile','deleteProfile'];
 
 const ADAPTERS = {
   local: () => import('./local.js'),

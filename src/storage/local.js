@@ -23,3 +23,5 @@ export async function saveRoles(roles){ update(s => { s.roles = [...roles]; }); 
 export async function saveWorkTypes(work){ update(s => { s.work = [...work]; }); }
 export async function setNoAuto(date, techId, on){ update(s => { s.noAuto = s.noAuto || {}; const k = date + '|' + techId; if (on) s.noAuto[k] = true; else delete s.noAuto[k]; }); }
 export async function setNote(date, techId, text){ update(s => { s.notes = s.notes || {}; const k = date + '|' + techId; if (String(text || '').trim()) s.notes[k] = String(text); else delete s.notes[k]; }); }
+export async function upsertProfile(profile){ update(s => { s.profiles = s.profiles || []; upsert(s.profiles, profile); }); }
+export async function deleteProfile(id){ update(s => { s.profiles = (s.profiles || []).filter(p => p.id !== id); }); }

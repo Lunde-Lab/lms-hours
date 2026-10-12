@@ -1,5 +1,6 @@
 /* Domenemodell: faste aktiviteter og roller, skiftplan og arbeidstider.
    Eksempeldata bruker bare anonyme navn («Tekniker 1-01» osv.). */
+import { defaultProfiles } from './profiles.js';
 
 export const VERSION = 9;
 export const PH = {K:'Kveld', H:'Helg', D:'Dag', F:'Fri'};
@@ -58,6 +59,7 @@ export function freshState(uid){
     roles:[...FIXED_ROLES],
     acts:ACTIVITIES(),
     machines:[], work:WORK_TYPES(),
-    entries:[], noAuto:{}, notes:{}, autoFrom: AUTO_FROM, autoDone: null
+    entries:[], noAuto:{}, notes:{}, autoFrom: AUTO_FROM, autoDone: null,
+    profiles: defaultProfiles(uid)
   };
 }
