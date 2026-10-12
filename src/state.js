@@ -12,7 +12,7 @@ export function setStorage(adapter){ store = adapter; }
 export async function load(){ const o = await store.loadAll(); if (o) { S = o; return true; } return false; }
 export function save(){ store.saveAll(S); reindex(); }
 
-export const UI = { oppOpen:{}, rapOpen:{}, tab:'fore', date: todayIso(), showOff:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null };
+export const UI = { oppOpen:{}, rapOpen:{}, tab:'kal', dayOpen:false, date: todayIso(), showOff:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null };
 
 /* ---------- oppslag ---------- */
 let IDX = new Map();

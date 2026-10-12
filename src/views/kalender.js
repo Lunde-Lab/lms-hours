@@ -7,6 +7,7 @@ import { render } from '../render.js';
 import { openSheet, openRange } from '../ui/sheet.js';
 import { toast } from '../ui/toast.js';
 import { xtag } from '../ui/bits.js';
+import { demoBanner } from './foring.js';
 
 export function vKal(){
   const [y,m] = UI.cal.split('-').map(Number);
@@ -15,11 +16,11 @@ export function vKal(){
   const days = Array.from({length:nd}, (_,i) => isoOf(first+i));
   const today = todayIso();
   const cols = days.length + 1;
-  let h = `<div class="row" style="justify-content:space-between">
-     <div class="row"><button class="icon-btn" data-action="cal" data-d="-1" aria-label="Forrige måned">‹</button><button class="icon-btn" data-action="cal" data-d="1" aria-label="Neste måned">›</button><h2>${MON[m-1]} ${y}</h2><button class="btn sm" data-action="extra" data-from="${days.includes(today) ? today : days[0]}">+ Ekstra personell</button></div>
+  let h = demoBanner() + `<div class="row" style="justify-content:space-between">
+     <div class="row"><button class="icon-btn" data-action="cal" data-d="-1" aria-label="Forrige måned">‹</button><button class="icon-btn" data-action="cal" data-d="1" aria-label="Neste måned">›</button><h2>${MON[m-1]} ${y}</h2><button class="btn primary" data-action="day-open" data-d="${today}">Føring</button><button class="btn sm" data-action="extra" data-from="${days.includes(today) ? today : days[0]}">+ Ekstra personell</button></div>
      <div class="legend">
      ${S.acts.map(a => `<span><i class="sw" style="background:${color(a)};border-color:transparent"></i>${esc(a.name)}</span>`).join('')}</div></div>`;
-  h += `<div class="cal-wrap"><table class="cal"><thead><tr><th class="nm">Tekniker</th>${days.map(d => { const u = udate(d); const wd = u.getUTCDay(); return `<th class="${d===today?'today':''} ${wd===0||wd===6?'we':''}"><span class="dd">${u.getUTCDate()}</span>${WDS[wd]}</th>`; }).join('')}</tr></thead><tbody>`;
+  h += `<div class="cal-wrap"><table class="cal"><thead><tr><th class="nm">Tekniker</th>${days.map(d => { const u = udate(d); const wd = u.getUTCDay(); return `<th class="day ${d===today?'today':''} ${wd===0||wd===6?'we':''}" data-action="day-open" data-d="${d}" title="Føring ${ddmm(d)}"><span class="dd">${u.getUTCDate()}</span>${WDS[wd]}</th>`; }).join('')}</tr></thead><tbody>`;
   S.shifts.forEach((s, i) => {
     if (i) h += `<tr class="gap"><td class="nm"></td><td colspan="${cols-1}"></td></tr>`;
     h += `<tr class="grp"><td class="nm">${esc(s.name)}</td>${days.map(d => { const p = phase(s.id,d).key; return `<td class="${p} ${d===today?'today':''}">${p==='F'?'':p}</td>`; }).join('')}</tr>`;
@@ -62,7 +63,7 @@ export function vKal(){
       h += `</tr>`;
     }
   });
-  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den. Dra over flere dager på én rad for å føre dem samtidig. Hurtigtast: hold musepekeren over en LMS-dag og trykk <kbd>M</kbd> for å bytte maskin, <kbd>A</kbd> for å bytte arbeid (Shift baklengs).</div>`;
+  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den, eller på datoen øverst for å føre hele dagen for alle. Dra over flere dager på én rad for å føre dem samtidig. Hurtigtast: hold musepekeren over en LMS-dag og trykk <kbd>M</kbd> for å bytte maskin, <kbd>A</kbd> for å bytte arbeid (Shift baklengs).</div>`;
   return h;
 }
 
@@ -122,7 +123,7 @@ function cycleLms(field, dir){
 /* true hvis tasten ble brukt */
 export function onKey(e){
   if (drag && e.key === 'Escape'){ drag = null; markSel(); return true; }
-  if (UI.tab === 'kal' && UI.hover && !UI.sheet && !UI.dlg && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)){
+  if (UI.tab === 'kal' && UI.hover && !UI.sheet && !UI.dlg && !UI.dayOpen && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)){
     const k = e.key.toLowerCase();
     if (k === 'm' || k === 'a'){ e.preventDefault(); cycleLms(k === 'm' ? 'machine' : 'work', e.shiftKey ? -1 : 1); return true; }
   }

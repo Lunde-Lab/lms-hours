@@ -1,4 +1,4 @@
-/* Føring: én dag, alle skift, en rad per tekniker. */
+/* Føring: én dag, alle skift, en rad per tekniker. Åpnes som modal fra kalenderen (knappen «Føring» eller en dato). */
 import { dn, isoOf, todayIso, longDate, fmtH, esc } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, setState, freshState, act, hasMW, mwText, entriesOf, phase, workHours, timeTxt, stdHours, sumH, label, color, activeOn, workDay, autoFill } from '../state.js';
@@ -11,8 +11,7 @@ import { xtag } from '../ui/bits.js';
 export function vFore(){
   const date = UI.date;
   const order = [...S.shifts].sort((a,b) => (phase(a.id,date).key==='F') - (phase(b.id,date).key==='F') || a.id-b.id);
-  let h = '';
-  if (S.demo) h += `<div class="banner"><b>Eksempeldata.</b> Timer, roller og maskiner er fylt inn for å vise hvordan det fungerer. <button class="btn sm" data-action="clear-demo">Tøm eksempeldata</button></div>`;
+  let h = `<div class="sheet-h"><div class="t">Føring</div><button class="icon-btn x" data-action="day-close" aria-label="Lukk">×</button></div>`;
   h += `<div class="datenav">
     <button class="icon-btn" data-action="day" data-d="-1" aria-label="Forrige dag">‹</button>
     <button class="icon-btn" data-action="day" data-d="1" aria-label="Neste dag">›</button>
@@ -62,7 +61,12 @@ function chip(e){
   return `<span class="chip two ${e.auto ? 'auto' : ''}">${dot}<span class="cl"><span>${esc(a.name)}</span><small>${esc(sub)}</small></span>${h}</span>`;
 }
 
+export const demoBanner = () => S.demo ? `<div class="banner"><b>Eksempeldata.</b> Timer, roller og maskiner er fylt inn for å vise hvordan det fungerer. <button class="btn sm" data-action="clear-demo">Tøm eksempeldata</button></div>` : '';
+
 export const actions = {
+  'day-open'(el){ UI.dayOpen = true; if (el.dataset.d) UI.date = el.dataset.d; render(); },
+  'day-close'(){ UI.dayOpen = false; render(); },
+  'day-scrim'(el, sh, e){ if (e.target === el){ UI.dayOpen = false; render(); } },
   day(el){ UI.date = isoOf(dn(UI.date) + +el.dataset.d); render(); },
   today(){ UI.date = todayIso(); render(); },
   'toggle-off'(el){ UI.showOff[el.dataset.s] = !UI.showOff[el.dataset.s]; render(); },

@@ -1,5 +1,5 @@
 -- UTKAST – kjøres IKKE automatisk. Ligger i drafts/ (ikke migrations/) med vilje.
--- Skjema for LMS Timer. Speiler tilstanden i src/state.js / src/storage/local.js.
+-- Skjema for LMS Hours. Speiler tilstanden i src/state.js / src/storage/local.js.
 -- Personvern: ingen ekte navn eller timedata i dette repoet. Bare faste referansedata seedes her.
 
 create extension if not exists pgcrypto;  -- gen_random_uuid()
