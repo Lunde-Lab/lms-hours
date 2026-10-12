@@ -29,7 +29,7 @@ export function vKal(){
         if (!activeOn(t, d)) return {d, out:true};
         const p = phase(s.id, d).key; const list = entriesOf(t.id, d);
         const o = {d, p, key:'', bg:'', lab:'', short:'', sub:'', subShort:'', prev:false,
-          ttl: list.length ? list.map(e => label(e) + ' ' + fmtH(e.hours) + ' t').join(', ') : (p === 'F' ? 'Fri' : PH[p] + ' ' + timeTxt(p, d))};
+          ttl: list.length ? list.map(e => label(e) + ' ' + fmtH(e.hours) + ' t').join(', ') + (p === 'F' ? ' · overtid' : '') : (p === 'F' ? 'Fri' : PH[p] + ' ' + timeTxt(p, d))};
         if (list.length){
           const {act:a0} = dominant(list); const tot = sumH(list) || 1;
           if (list.length > 1){
