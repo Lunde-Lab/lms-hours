@@ -7,7 +7,8 @@ Timeføring for teknisk personell på LMS. Skiftledere fører timer per tekniker
 - **Aldri** ekte navn, e-postadresser, brukernavn eller timedata i kode, eksempeldata, tester, SQL, commits eller PR-er.
 - Eksempeldata bruker bare anonyme navn: «Tekniker 1-01», «Tekniker 2-07» osv. (`exampleName` i `src/model.js`).
 - Maskiner i eksempeldata er fiktive registreringer (ONX, ONY, ONZ).
-- Allowlisten for skiftledere (`shift_leaders`) fylles i Supabase-dashbordet, aldri i repoet.
+- Allowlisten for skiftledere og admin (`shift_leaders`) fylles i Supabase-dashbordet, aldri i repoet.
+- Eksempelprofiler bruker bare anonyme navn: «Admin», «Skiftleder 1» osv. (`defaultProfiles` i `src/profiles.js`).
 - `config.js` ligger i `.gitignore`. Ingen nøkler i `config.example.js`.
 
 ## Fasit
@@ -29,8 +30,9 @@ src/schedule.js            rene funksjoner: phase, workHours, stdHours, extraUnt
 src/state.js               tilstand S, UI, oppslag, LMS-standard (recomputeAuto/autoFill), migrering
 src/demo.js                anonyme eksempeldata
 src/util.js                dato- og formateringshjelpere
-src/prefs.js               visningsvalg per nettleser (sist brukte fane)
-src/views/                 kalender (startside), foring (modal fra kalenderen), rapport, oppsett
+src/prefs.js               visningsvalg per nettleser (sist brukte fane og profil)
+src/profiles.js            profiler og tilgang: roller (admin, skiftleder), sjekker, migrering
+src/views/                 kalender (startside), foring (modal fra kalenderen), rapport, oppsett, profil (velg profil + admin)
 src/ui/                    sheet, dialog, toast, bits (små HTML-biter)
 src/storage/index.js       felles lagringsgrensesnitt + valg av adapter
 src/storage/local.js       localStorage (samme nøkkel/format som prototypen)
@@ -68,6 +70,13 @@ Utkast ligger i `supabase/drafts/` (ikke `migrations/`) slik at ingenting kjøre
   - skiftfaser: `--ph-k #DDD5F7` (kveld), `--ph-h #FAE0B8` (helg), `--ph-d #CFE4F7` (dag), `--ph-f #FFFFFF` (fri), `--ph-ink #2B2F36`
   - aktivitetsfarger: `--a1` … `--a10`
   - `--scrim`, fonter `--f-body` (IBM Plex Sans) og `--f-mono` (IBM Plex Mono)
+
+## Profiler og tilgang
+
+- Bare skiftledere og admin har profil, og bare de har tilgang (uten profil vises bare «Velg profil»).
+- Skiftleder: alt unntatt profiler, «Tøm alt» og gjenoppretting. Admin: alt, inkludert å legge til/fjerne profiler.
+- Minst én admin; man kan ikke fjerne sin egen profil. Admin-handlinger listes i `ADMIN_ONLY` (`src/views/profil.js`).
+- Proof of concept: profilen velges uten passord. Med Supabase: Supabase Auth + `shift_leaders.role` (RLS i `002_rls.sql`).
 
 ## Domene
 

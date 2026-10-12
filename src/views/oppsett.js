@@ -1,7 +1,9 @@
-/* Oppsett: teknikere og roller, maskiner og backup.
+/* Oppsett: teknikere og roller, maskiner og backup. Profiler, «Tøm alt» og gjenoppretting er bare for admin.
    Aktiviteter, roller og LMS-arbeid legges inn i koden (model.js), ikke her. */
 import { esc, uid } from '../util.js';
-import { S, UI, setState, freshState, save, tech, shiftOf, autoFill, migrate } from '../state.js';
+import { S, UI, me, setState, freshState, save, tech, shiftOf, autoFill, migrate } from '../state.js';
+import { isAdmin } from '../profiles.js';
+import { vProfiles } from './profil.js';
 import { render } from '../render.js';
 import { ask } from '../ui/dialog.js';
 import { toast, toastUndo, snapshot, copy } from '../ui/toast.js';
@@ -22,17 +24,19 @@ export function vOpp(){
     ${S.machines.length ? S.machines.map(m => `<tr><td class="reg">${esc(m.name)}</td><td><button class="rolebtn" data-action="m-active" data-m="${m.id}" aria-pressed="${m.active}">${m.active?'I dokk':'Ferdig'}</button></td><td><button class="btn sm danger" data-action="del-m" data-m="${m.id}">Fjern</button></td></tr>`).join('') : '<tr><td colspan="3" class="muted">Ingen maskiner. Legg til her eller direkte når du fører LMS.</td></tr>'}
     </tbody></table><div class="muted" style="font-size:13px">Ferdige maskiner vises ikke ved føring, men timene blir i rapporten.</div>
     <div class="row"><input type="text" id="new-m" class="field" placeholder="F.eks. ONX"><button class="btn" data-action="add-m2">Legg til</button></div></section>`;
+  const adm = isAdmin(me());
+  h += vProfiles();
   h += `<section class="panel set"><h2>Data</h2><div class="row">
       <button class="btn" data-action="backup">Kopier backup</button>
-      <button class="btn sm danger" data-action="reset">Tøm alt</button>
-    </div><label class="muted" style="font-size:13px;display:grid;gap:4px">Gjenopprett fra backup<textarea id="restore" placeholder="Lim inn backup her"></textarea></label><div><button class="btn sm" data-action="restore">Gjenopprett</button></div></section>`;
+      ${adm ? '<button class="btn sm danger" data-action="reset">Tøm alt</button>' : ''}
+    </div>${adm ? `<label class="muted" style="font-size:13px;display:grid;gap:4px">Gjenopprett fra backup<textarea id="restore" placeholder="Lim inn backup her"></textarea></label><div><button class="btn sm" data-action="restore">Gjenopprett</button></div>` : '<div class="muted" style="font-size:13px">Tøm alt og gjenoppretting fra backup kan bare gjøres av admin.</div>'}</section>`;
   h += `</div></div>`;
   return h;
 }
 
 export const actions = {
   'opp-toggle'(el){ UI.oppOpen[el.dataset.s] = !UI.oppOpen[el.dataset.s]; render(); },
-  reset(){ ask({title:'Tømme alt?', text:'Alle føringer, teknikere, maskiner og roller tilbakestilles. Dette kan ikke angres.', ok:'Tøm alt', fn:() => { setState(freshState()); autoFill(); render(); toast('Alt er tømt'); }}); },
+  reset(){ ask({title:'Tømme alt?', text:'Alle føringer, teknikere, maskiner og roller tilbakestilles. Profilene beholdes. Dette kan ikke angres.', ok:'Tøm alt', fn:() => { const ps = S.profiles; setState(freshState()); S.profiles = ps; autoFill(); render(); toast('Alt er tømt'); }}); },
   backup(){ copy(JSON.stringify(S), 'Backup kopiert. Lagre teksten et trygt sted.'); },
   restore(){ try { const o = JSON.parse(val('restore')); if (!o.techs || !o.entries) throw 0; setState(migrate(o)); save(); render(); toast('Backup gjenopprettet'); } catch(err){ toast('Kunne ikke lese backupen. Lim inn hele teksten fra «Kopier backup».'); } },
   'add-tech'(){ const n = val('new-tech'); if (!n){ toast('Skriv navnet på teknikeren'); return; } const sid = +val('new-tech-s')||1; S.techs.push({id:uid(), name:n, shift:sid, roles:[]}); save(); render(); toast(n+' lagt til på '+shiftOf(sid).name); },

@@ -2,6 +2,7 @@
 import { dn, isoOf, todayIso, uid } from './util.js';
 import { VERSION, AUTO_FROM, LMS, LOCKED, FIXED_ROLES, WORK_TYPES, freshState as fresh } from './model.js';
 import * as P from './schedule.js';
+import { profileOf, migrateProfiles } from './profiles.js';
 
 export let S;
 export function setState(s){ S = s; }
@@ -12,7 +13,10 @@ export function setStorage(adapter){ store = adapter; }
 export async function load(){ const o = await store.loadAll(); if (o) { S = o; return true; } return false; }
 export function save(){ store.saveAll(S); reindex(); }
 
-export const UI = { oppOpen:{}, rapOpen:{}, tab:'kal', dayOpen:false, date: todayIso(), foreOpen:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null };
+export const UI = { oppOpen:{}, rapOpen:{}, tab:'kal', dayOpen:false, date: todayIso(), foreOpen:{}, cal: todayIso().slice(0,7), from:null, to:null, sheet:null, me:null };
+
+/* Innlogget profil (UI.me er profil-id). null = ingen tilgang, appen viser «Velg profil». */
+export const me = () => profileOf(S && S.profiles, UI.me);
 
 /* ---------- oppslag ---------- */
 let IDX = new Map();
@@ -128,6 +132,7 @@ export function migrate(o){
   o.roles = (o.roles || []).filter(r => r !== 'Engine Overhaul');
   o.roles = [...FIXED_ROLES, ...(o.roles || []).filter(r => !FIXED_ROLES.includes(r))];
   o.work = [...WORK_TYPES(), ...(o.work || []).filter(w => !WORK_TYPES().includes(w))];
+  o.profiles = migrateProfiles(o.profiles, uid);
   o.noAuto = o.noAuto || {}; o.notes = o.notes || {}; if (!o.autoFrom || o.autoFrom > AUTO_FROM){ o.autoFrom = AUTO_FROM; o.autoDone = null; }
   if ((o.v || 0) < 7) for (const e of o.entries) if (e.auto){ e.machine = ''; e.work = ''; }
   o.v = VERSION; return o; }

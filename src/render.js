@@ -1,12 +1,18 @@
 /* Tegner aktiv fane i <main id="view">, og Føring-modalen (#dayov) når den er åpen. */
-import { UI } from './state.js';
+import { UI, me } from './state.js';
 import { savePref } from './prefs.js';
 import { vFore } from './views/foring.js';
 import { vKal } from './views/kalender.js';
 import { vRap } from './views/rapport.js';
 import { vOpp } from './views/oppsett.js';
+import { vLogin, vWho } from './views/profil.js';
 
 export function render(){
+  /* uten profil: ingen tilgang, bare «Velg profil» */
+  const ok = !!me();
+  document.getElementById('tabs').style.display = ok ? '' : 'none';
+  document.getElementById('who').innerHTML = vWho();
+  if (!ok){ const v = document.getElementById('view'); v.className = ''; v.innerHTML = vLogin(); UI.calShown = null; UI.dayOpen = false; renderDay(); return; }
   if (!['kal', 'rap', 'opp'].includes(UI.tab)) UI.tab = 'kal';   /* Føring er ikke lenger egen fane */
   for (const b of document.querySelectorAll('.tab')) b.setAttribute('aria-current', b.dataset.tab === UI.tab ? 'page' : 'false');
   const v = document.getElementById('view');
