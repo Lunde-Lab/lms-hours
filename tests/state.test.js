@@ -51,3 +51,9 @@ test('notat per tekniker og dag; tomt notat fjernes', () => {
   assert.deepEqual(S.notes, {});
   const o = freshState(); delete o.notes; assert.deepEqual(migrate(o).notes, {});
 });
+test('Fravær er en fast aktivitet og legges til i lagret tilstand', () => {
+  const o = freshState(); o.acts = o.acts.filter(a => a.id !== 'fravaer');
+  const m = migrate(o);
+  assert.deepEqual(m.acts.map(a => a.id), ['line','h1500','ass','hs','kurs','mod','ferie','avsp','fravaer','annet']);
+  assert.equal(m.acts.find(a => a.id === 'fravaer').name, 'Fravær');
+});

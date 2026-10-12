@@ -29,9 +29,10 @@ export const ACTIVITIES = () => [
   {id:'mod',name:'Mod',code:'M',role:'',type:'n',color:5,mw:true},
   {id:'ferie',name:'Ferie',code:'Fe',role:'',type:'n',color:8},
   {id:'avsp',name:'Avspasering',code:'Av',role:'',type:'n',color:9},
+  {id:'fravaer',name:'Fravær',code:'Fr',role:'',type:'n',color:10},   /* syk eller fri */
   {id:'annet',name:'Annet',code:'An',role:'',type:'n',color:7}
 ];
-export const LOCKED = ['line',LMS,'ass','hs','kurs','mod','ferie','avsp','annet'];
+export const LOCKED = ['line',LMS,'ass','hs','kurs','mod','ferie','avsp','fravaer','annet'];
 
 /* Arbeid på LMS-føringer. Legges inn her (ingen UI for å endre listen). */
 export const WORK_TYPES = () => ['Sheet','Repair','Inspection','Mod','SLL','Testing','Final'];

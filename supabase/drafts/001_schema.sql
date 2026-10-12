@@ -141,7 +141,8 @@ insert into public.activities (id, name, code, required_role, kind, color, fixed
   ('mod',   'Mod',         'M',  null,          'n',     5, true, 6),
   ('ferie', 'Ferie',       'Fe', null,          'n',     8, true, 7),
   ('avsp',  'Avspasering', 'Av', null,          'n',     9, true, 8),
-  ('annet', 'Annet',       'An', null,          'n',     7, true, 9)
+  ('fravaer','Fravær',     'Fr', null,          'n',    10, true, 9),
+  ('annet', 'Annet',       'An', null,          'n',     7, true, 10)
 on conflict (id) do nothing;
 update public.activities set machine_work = true where id in ('line', 'h1500', 'mod');
 

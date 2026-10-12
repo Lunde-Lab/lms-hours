@@ -1,11 +1,9 @@
-/* Kalender: måned per tekniker med fargestriper per aktivitet, dra over flere dager på én rad,
-   og hurtigtaster M/A for LMS-dager. */
+/* Kalender: måned per tekniker med fargestriper per aktivitet, og dra over flere dager på én rad. */
 import { isoOf, todayIso, udate, ddmm, fmtH, esc, dn, MON, WDS } from '../util.js';
 import { PH } from '../model.js';
-import { S, UI, save, act, tech, entriesOf, hasMW, mwText, noteOf, phase, timeTxt, sumH, label, color, activeOn, dominant, recomputeAuto } from '../state.js';
+import { S, UI, act, entriesOf, hasMW, mwText, noteOf, phase, timeTxt, sumH, label, color, activeOn, dominant } from '../state.js';
 import { render } from '../render.js';
 import { openSheet, openRange } from '../ui/sheet.js';
-import { toast } from '../ui/toast.js';
 import { xtag } from '../ui/bits.js';
 
 export function vKal(){
@@ -64,7 +62,7 @@ export function vKal(){
       h += `</tr>`;
     }
   });
-  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den, eller på datoen øverst for å føre hele dagen for alle. Dra over flere dager på én rad for å føre dem samtidig. Hurtigtast: hold musepekeren over en LMS-dag og trykk <kbd>M</kbd> for å bytte maskin, <kbd>A</kbd> for å bytte arbeid (Shift baklengs).</div>`;
+  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den, eller på datoen øverst for å føre hele dagen for alle. Dra over flere dager på én rad for å føre dem samtidig.</div>`;
   return h;
 }
 
@@ -103,30 +101,8 @@ document.addEventListener('pointerup', () => {
 });
 document.addEventListener('pointercancel', () => { drag = null; markSel(); });
 
-/* ---------- hurtigtaster: M / A blar i maskin / arbeid på LMS-dagen under musepekeren ---------- */
-document.addEventListener('mouseover', e => {
-  const td = e.target.closest && e.target.closest('td.cell[data-t]');
-  UI.hover = td ? {t: td.dataset.t, d: td.dataset.d} : null;
-});
-function cycleLms(field, dir){
-  const {t: techId, d: date} = UI.hover; const t = tech(techId); if (!t) return;
-  let list = entriesOf(techId, date).filter(e => act(e.act)?.type === '1500H');
-  if (!entriesOf(techId, date).length){ recomputeAuto(techId, date); save(); list = entriesOf(techId, date).filter(e => act(e.act)?.type === '1500H'); }
-  if (!list.length){ toast('Ingen LMS-timer på denne dagen'); return; }
-  const opts = field === 'machine' ? ['', ...S.machines.filter(m => m.active).map(m => m.name)] : ['', ...S.work];
-  if (opts.length < 2){ toast(field === 'machine' ? 'Ingen aktive maskiner. Legg til i Oppsett.' : 'Ingen arbeid å velge'); return; }
-  const cur = opts.indexOf(list[0][field] || '');
-  const next = opts[((cur < 0 ? 0 : cur) + dir + opts.length) % opts.length];
-  for (const e of list) e[field] = next;
-  save(); render();
-  toast(t.name.split(' ')[0] + ' ' + ddmm(date) + ': ' + (field === 'machine' ? (next || 'Ingen maskin') : (next || 'Arbeid –')));
-}
-/* true hvis tasten ble brukt */
+/* Escape avbryter dra-markeringen. true hvis tasten ble brukt */
 export function onKey(e){
   if (drag && e.key === 'Escape'){ drag = null; markSel(); return true; }
-  if (UI.tab === 'kal' && UI.hover && !UI.sheet && !UI.dlg && !UI.dayOpen && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)){
-    const k = e.key.toLowerCase();
-    if (k === 'm' || k === 'a'){ e.preventDefault(); cycleLms(k === 'm' ? 'machine' : 'work', e.shiftKey ? -1 : 1); return true; }
-  }
   return false;
 }
