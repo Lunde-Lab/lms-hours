@@ -42,6 +42,9 @@ export function dominant(list){
 export const activeOn = (t, date) => !t.extra || (date >= t.extra.from && date <= t.extra.until);
 export const workDay = (t, date) => activeOn(t, date) && phase(t.shift, date).key !== 'F';
 export const manualOf = (techId, date) => entriesOf(techId, date).filter(e => !e.auto);
+/* Føringer på en fridag i skiftplanen er overtid. Føres som vanlig; regnes ut fra skiftplanen. */
+export const offDay = (t, date) => phase(t.shift, date).key === 'F';
+export const overtime = e => { const t = tech(e.tech); return !!t && offDay(t, e.date); };
 
 /* ---------- LMS-standard ---------- */
 /* fyller det som er igjen av arbeidsdagen med én automatisk LMS-føring */

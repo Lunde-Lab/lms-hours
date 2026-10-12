@@ -2,7 +2,7 @@
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, color, allowed, activeOn, workDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
+  sumH, label, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
 import { render } from '../render.js';
 import { toast } from './toast.js';
 import { ask } from './dialog.js';
@@ -21,7 +21,28 @@ export function openBulk(shiftId){
   renderSheet();
 }
 /* flere dager for én tekniker, valgt ved å dra i kalenderen */
-export function openRange(techId, from, to){ UI.sheet = {mode:'range', tech:techId, from, to, act:null, machine:null, work:null}; renderSheet(); }
+export function openRange(techId, from, to){
+  const cur = sameSetup(techId, rangeDays(techId, from, to));
+  UI.sheet = {mode:'range', tech:techId, from, to, act:cur ? cur.act : null, machine:cur ? cur.machine || null : null, work:cur ? cur.work || null : null};
+  renderSheet();
+}
+/* Det som er ført en dag, som én linje (LMS standard også når den bare vises som forslag). */
+function daySetup(t, d){
+  const list = entriesOf(t.id, d);
+  if (!list.length) return workDay(t, d) && !S.noAuto[d + '|' + t.id] ? [{act:'h1500', machine:'', work:'', auto:true}] : [];
+  return list;
+}
+function setupText(list){
+  if (!list.length) return 'Ingenting ført';
+  return list.map(e => { const a = act(e.act);
+    return (a?.type === '1500H' ? ['LMS', e.machine, e.work].filter(Boolean).join(' · ') : a ? a.name : 'Ukjent') + (e.auto ? ' (standard)' : '') + (list.length > 1 ? ' ' + fmtH(e.hours) + ' t' : ''); }).join(' + ');
+}
+/* {act, machine, work} hvis alle dagene har nøyaktig samme ene aktivitet, ellers null */
+function sameSetup(techId, days){
+  const t = tech(techId); if (!t || !days.length) return null;
+  const ls = days.map(d => daySetup(t, d)); const k = e => e.act + '|' + (e.machine || '') + '|' + (e.work || '');
+  return ls.every(l => l.length === 1 && k(l[0]) === k(ls[0][0])) ? ls[0][0] : null;
+}
 export function openExtra(shift, date){ UI.sheet = {mode:'extra', name:'', shift: shift || 1, from: date || UI.date, days: 1}; renderSheet(); setTimeout(() => document.getElementById('ex-name')?.focus(), 0); }
 export function closeSheet(){ UI.sheet = null; renderSheet(); render(); }
 
@@ -104,7 +125,11 @@ export function renderSheet(){
     const busy = days.filter(d => manualOf(t.id, d).length).length;
     const tot = days.reduce((x, d) => x + stdHours(t, d), 0);
     const a = act(sh.act); const ok = a && (a.type !== '1500H' || (sh.machine && sh.work)) && days.length > 0;
+    const groups = new Map(); for (const d of days){ const x = setupText(daySetup(t, d)); groups.set(x, (groups.get(x) || 0) + 1); }
+    const now = groups.size === 1 ? `<b>${esc([...groups.keys()][0])}</b> på ${days.length === 1 ? 'dagen' : 'alle ' + days.length + ' dagene'}`
+      : [...groups].map(([x, n]) => `<div><b>${esc(x)}</b> · ${n} ${n === 1 ? 'dag' : 'dager'}</div>`).join('');
     body = `<div class="sheet-h"><div><div class="t">${esc(t.name)}</div><div class="s">${esc(ddmm(sh.from))} – ${esc(ddmm(sh.to))} · ${esc(shiftOf(t.shift).name)} · ${days.length} ${off ? (days.length === 1 ? 'fridag (overtid)' : 'fridager (overtid)') : (days.length === 1 ? 'arbeidsdag' : 'arbeidsdager')} · ${fmtH(tot)} t${skip ? ` · ${skip} ${skip === 1 ? 'dag' : 'dager'} hoppes over` : ''}</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      ${days.length ? `<div class="sec"><h3>Ført nå</h3><div class="preview">${now}</div></div>` : ''}
       <div class="sec"><h3>Aktivitet</h3>${actPicker(allowed(t), sh.act)}</div>
       ${a && a.type === '1500H' ? h1500Picker(sh) : ''}
       <div class="hint">Hver dag får full arbeidsdag med aktiviteten.${busy ? ` Føringene på ${busy} ${busy === 1 ? 'dag' : 'dager'} erstattes.` : ''}</div>
@@ -133,7 +158,7 @@ export function renderSheet(){
     const scale = Math.max(std, sum) || 1;
     const remTxt = rem > 0 ? `${fmtH(rem)} t igjen` : rem < 0 ? `${fmtH(-rem)} t over` : 'Dagen er full';
     body = `<div class="sheet-h"><div>
-        <div class="t">${esc(t.name)}</div>
+        <div class="t">${esc(t.name)}${offDay(t, sh.date) ? '<span class="xtag ot">Overtid</span>' : ''}</div>
         <div class="s">${esc(longDate(sh.date))} · ${esc(shiftOf(t.shift).name)} · ${PH[ph.key]} ${timeTxt(ph.key,sh.date)}</div>
         <div class="roles">${t.roles.length ? 'Roller: ' + t.roles.map(r => `<b>${esc(r)}</b>`).join('') : 'Ingen roller · settes i Oppsett'}</div>
       </div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
@@ -146,7 +171,7 @@ export function renderSheet(){
       </div>
       <div class="sec addbox"><h3>Legg til aktivitet</h3>
         ${actPicker(allowed(t), sh.act)}
-        <div class="hint">${(() => { const rm = std - sumH(list.filter(e => !e.auto)); return rm > 0 ? `Legges til med ${fmtH(rm)} t.` : 'Dagen er full. Ny aktivitet legges til med 1 t.'; })()} LMS standard fyller automatisk resten av dagen. Juster timene på raden.</div>
+        <div class="hint">${(() => { const rm = std - sumH(list.filter(e => !e.auto)); return rm > 0 ? `Legges til med ${fmtH(rm)} t.` : 'Dagen er full. Ny aktivitet legges til med 1 t.'; })()} ${offDay(t, sh.date) ? 'Fridag: alt som føres her regnes som overtid.' : 'LMS standard fyller automatisk resten av dagen.'} Juster timene på raden.</div>
       </div>
       <div class="sheet-f"><button class="btn primary" data-action="close">Ferdig</button></div>`;
   }

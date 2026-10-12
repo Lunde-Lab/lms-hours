@@ -1,7 +1,7 @@
 /* Føring av flere dager for én tekniker (dra i kalenderen). */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, setState, setStorage, freshState, reindex, recomputeAuto, entriesOf, rangeDays, applyRange, clearRange } from '../src/state.js';
+import { S, setState, setStorage, freshState, reindex, recomputeAuto, entriesOf, rangeDays, applyRange, clearRange, overtime } from '../src/state.js';
 
 setStorage({ saveAll(){} });
 let t;
@@ -36,4 +36,8 @@ test('nullstill fjerner føringer og slår på LMS-standard igjen', () => {
   clearRange(t.id, '2026-01-05', '2026-01-06');
   assert.equal(S.noAuto['2026-01-06|' + t.id], undefined);
   assert.deepEqual(entriesOf(t.id, '2026-01-06').map(e => [e.act, e.hours, e.auto]), [['h1500', 9, true]]);
+});
+test('føringer på fridag er overtid, på arbeidsdag ikke', () => {
+  assert.equal(overtime({tech:t.id, date:'2026-01-20'}), true);    // fri
+  assert.equal(overtime({tech:t.id, date:'2026-01-12'}), false);   // dag
 });

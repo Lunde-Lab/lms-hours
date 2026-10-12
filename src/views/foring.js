@@ -42,7 +42,7 @@ export function vFore(){
         const st = sum === 0 ? 'none' : sum < std ? 'part' : sum > std ? 'over' : 'full';
         const stTxt = sum === 0 ? (off ? 'Fri' : dn(date) > dn(todayIso()) ? 'Standard' : 'Ikke ført') : `${fmtH(sum)} / ${fmtH(std)} t`;
         h += `<button class="tech" data-action="open" data-t="${t.id}">
-          <span class="nm">${esc(t.name)}${xtag(t)}</span>
+          <span class="nm">${esc(t.name)}${xtag(t)}${off && list.length ? '<span class="xtag ot">Overtid</span>' : ''}</span>
           <span class="hrs"><span class="status ${st} num">${stTxt}</span>${sum ? `<span class="meter ${st==='part'?'part':''}"><i style="width:${Math.min(100,sum/std*100)}%"></i></span>` : ''}</span>
           <span class="chips">${!list.length && !off && dn(date) > dn(todayIso()) && workDay(t, date) && !S.noAuto[date + '|' + t.id] ? `<span class="chip auto"><i class="dot" style="background:${color(act('h1500'))}"></i><span>LMS · standard</span><b class="num">${fmtH(std)}</b></span>` : ''}${list.map(chip).join('')}</span>
         </button>`;
