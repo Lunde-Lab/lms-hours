@@ -2,7 +2,7 @@
    og hurtigtaster M/A for LMS-dager. */
 import { isoOf, todayIso, udate, ddmm, fmtH, esc, dn, MON, WDS } from '../util.js';
 import { PH } from '../model.js';
-import { S, UI, save, act, tech, entriesOf, phase, timeTxt, sumH, label, color, activeOn, dominant, recomputeAuto } from '../state.js';
+import { S, UI, save, act, tech, entriesOf, hasMW, mwText, phase, timeTxt, sumH, label, color, activeOn, dominant, recomputeAuto } from '../state.js';
 import { render } from '../render.js';
 import { openSheet, openRange } from '../ui/sheet.js';
 import { toast } from '../ui/toast.js';
@@ -27,7 +27,7 @@ export function vKal(){
       h += `<tr><td class="nm" title="${esc(t.name)}">${esc(t.name)}${xtag(t)}</td>`;
       const info = days.map(d => {
         if (!activeOn(t, d)) return {d, out:true};
-        const p = phase(s.id, d).key; const list = entriesOf(t.id, d);
+        const p = phase(s.id, d).key; const list = entriesOf(t.id, d).filter(e => +e.hours > 0);   /* linjer med 0 t vises ikke i kalenderen */
         const o = {d, p, key:'', bg:'', lab:'', short:'', sub:'', subShort:'', prev:false,
           ttl: list.length ? list.map(e => label(e) + ' ' + fmtH(e.hours) + ' t').join(', ') + (p === 'F' ? ' · overtid' : '') : (p === 'F' ? 'Fri' : PH[p] + ' ' + timeTxt(p, d))};
         if (list.length){
@@ -36,12 +36,12 @@ export function vKal(){
             let x = 0; o.bg = 'linear-gradient(90deg,' + list.map(e => { const c = color(act(e.act)); const f = x; x += (+e.hours || 0) / tot * 100; return `${c} ${f}% ${x}%`; }).join(',') + ')';
             o.key = 'split|' + d; o.short = '';
           } else {
-            const e = list[0]; const is15 = a0 && a0.type === '1500H';
-            o.bg = color(a0); o.key = (a0 ? a0.id : '?') + (is15 ? '|' + (e.machine || '') + '|' + (e.work || '') : '');
-            o.lab = is15 ? 'LMS' : (a0 ? a0.name : '?');
+            const e = list[0]; const is15 = a0 && a0.type === '1500H'; const mw = hasMW(a0);
+            o.bg = color(a0); o.key = (a0 ? a0.id : '?') + (mw ? '|' + (e.machine || '') + '|' + (e.work || '') : '');
+            o.lab = a0 ? a0.name : '?';
             o.short = is15 ? 'LMS' : (a0 ? a0.code : '?');
-            /* LMS på to linjer: «LMS» øverst, maskin og arbeid under */
-            if (is15){ o.sub = [e.machine, e.work].filter(Boolean).join(' · '); o.subShort = e.machine || e.work || ''; }
+            /* to linjer: aktivitet øverst, maskin og arbeid under (LMS, Line, Mod) */
+            if (mw){ o.sub = mwText(e); o.subShort = e.machine || e.work || ''; }
           }
         } else if (d > today && p !== 'F' && !S.noAuto[d + '|' + t.id]){
           o.bg = color(act('h1500')); o.key = 'prev'; o.prev = true; o.lab = 'LMS'; o.short = 'LMS';

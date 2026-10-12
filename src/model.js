@@ -19,14 +19,14 @@ export const FIXED_ROLES = ['Assessor','B1','B2','CRS','Independent','RGR','Hot 
    (se lmsFill i schedule.js og recomputeAuto/autoFill i state.js). */
 export const LMS = 'h1500';
 
-/* Faste aktiviteter. color er indeks i --a1 … --a10. */
+/* Faste aktiviteter. color er indeks i --a1 … --a10. mw: føres med maskin og arbeid (LMS har det alltid). */
 export const ACTIVITIES = () => [
-  {id:'line',name:'Line',code:'L',role:'',type:'n',color:1},
+  {id:'line',name:'Line',code:'L',role:'',type:'n',color:1,mw:true},
   {id:LMS,name:'LMS',code:'L',role:'',type:'1500H',color:2},
   {id:'ass',name:'Assessor',code:'A',role:'Assessor',type:'n',color:3},
   {id:'hs',name:'Hot Section',code:'HS',role:'Hot Section',type:'n',color:4},
   {id:'kurs',name:'Kurs',code:'K',role:'',type:'n',color:6},
-  {id:'mod',name:'Mod',code:'M',role:'',type:'n',color:5},
+  {id:'mod',name:'Mod',code:'M',role:'',type:'n',color:5,mw:true},
   {id:'ferie',name:'Ferie',code:'Fe',role:'',type:'n',color:8},
   {id:'avsp',name:'Avspasering',code:'Av',role:'',type:'n',color:9},
   {id:'annet',name:'Annet',code:'An',role:'',type:'n',color:7}

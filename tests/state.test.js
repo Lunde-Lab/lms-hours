@@ -1,7 +1,7 @@
 /* LMS-standard i tilstanden: automatisk føring fyller resten av arbeidsdagen. */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate } from '../src/state.js';
+import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, label } from '../src/state.js';
 
 setStorage({ saveAll(){} });
 let t;
@@ -33,4 +33,13 @@ test('ingen LMS-standard på fridag eller når den er slått av', () => {
 test('migrering legger til nye LMS-arbeid og beholder egne', () => {
   const o = freshState(); o.work = ['Sheet', 'Eget']; const m = migrate(o);
   assert.deepEqual(m.work, ['Sheet','Repair','Inspection','Mod','SLL','Testing','Final','Eget']);
+});
+test('Line og Mod føres med maskin og arbeid, som LMS', () => {
+  assert.deepEqual(S.acts.filter(a => hasMW(a)).map(a => a.id), ['line', 'h1500', 'mod']);
+  assert.equal(label({act:'line', machine:'ONX', work:'Repair'}), 'Line · ONX · Repair');
+  assert.equal(label({act:'h1500', machine:'', work:''}), 'LMS');
+});
+test('migrering gir Line og Mod maskin og arbeid i lagret tilstand', () => {
+  const o = freshState(); for (const a of o.acts) delete a.mw;
+  assert.equal(migrate(o).acts.find(a => a.id === 'mod').mw, true);
 });

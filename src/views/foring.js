@@ -1,7 +1,7 @@
 /* Føring: én dag, alle skift, en rad per tekniker. */
 import { dn, isoOf, todayIso, longDate, fmtH, esc } from '../util.js';
 import { PH } from '../model.js';
-import { S, UI, setState, freshState, act, entriesOf, phase, workHours, timeTxt, stdHours, sumH, label, color, activeOn, workDay, autoFill } from '../state.js';
+import { S, UI, setState, freshState, act, hasMW, mwText, entriesOf, phase, workHours, timeTxt, stdHours, sumH, label, color, activeOn, workDay, autoFill } from '../state.js';
 import { render } from '../render.js';
 import { openSheet, openBulk } from '../ui/sheet.js';
 import { ask } from '../ui/dialog.js';
@@ -54,12 +54,12 @@ export function vFore(){
   return h;
 }
 
-/* LMS på to linjer: «LMS» øverst, maskin og arbeid under. Uten maskin og arbeid holder én linje. */
+/* LMS, Line og Mod på to linjer: aktivitet øverst, maskin og arbeid under. Uten maskin og arbeid holder én linje. */
 function chip(e){
   const a = act(e.act); const dot = `<i class="dot" style="background:${color(a)}"></i>`; const h = `<b class="num">${fmtH(e.hours)}</b>`;
-  const sub = a?.type === '1500H' ? [e.machine, e.work].filter(Boolean).join(' · ') : '';
+  const sub = hasMW(a) ? mwText(e) : '';
   if (!sub) return `<span class="chip ${e.auto ? 'auto' : ''}">${dot}<span>${esc(label(e))}</span>${h}</span>`;
-  return `<span class="chip two ${e.auto ? 'auto' : ''}">${dot}<span class="cl"><span>LMS</span><small>${esc(sub)}</small></span>${h}</span>`;
+  return `<span class="chip two ${e.auto ? 'auto' : ''}">${dot}<span class="cl"><span>${esc(a.name)}</span><small>${esc(sub)}</small></span>${h}</span>`;
 }
 
 export const actions = {

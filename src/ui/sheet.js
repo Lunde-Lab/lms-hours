@@ -2,7 +2,7 @@
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
+  sumH, label, hasMW, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
 import { render } from '../render.js';
 import { toast } from './toast.js';
 import { ask } from './dialog.js';
@@ -11,8 +11,8 @@ import { val } from './bits.js';
 /* ---------- åpne ---------- */
 export function openSheet(techId, date = UI.date){
   if (!S.entries.some(e => e.tech === techId && e.date === date)){ recomputeAuto(techId, date); save(); }
-  const t = tech(techId); const rem = Math.max(0, stdHours(t,date) - sumH(manualOf(t.id,date)));
-  UI.sheet = {mode:'tech', tech:techId, date, act:null, machine:null, work:null, hours: rem > 0 ? rem : 1, newM:''};
+  UI.sheet = {mode:'tech', tech:techId, date, act:null, machine:null, work:null, hours:0, newM:''};
+  resetHours(UI.sheet);
   renderSheet();
 }
 export function openBulk(shiftId){
@@ -35,7 +35,7 @@ function daySetup(t, d){
 function setupText(list){
   if (!list.length) return 'Ingenting ført';
   return list.map(e => { const a = act(e.act);
-    return (a?.type === '1500H' ? ['LMS', e.machine, e.work].filter(Boolean).join(' · ') : a ? a.name : 'Ukjent') + (e.auto ? ' (standard)' : '') + (list.length > 1 ? ' ' + fmtH(e.hours) + ' t' : ''); }).join(' + ');
+    return (a ? label(e) : 'Ukjent') + (e.auto ? ' (standard)' : '') + (list.length > 1 ? ' ' + fmtH(e.hours) + ' t' : ''); }).join(' + ');
 }
 /* {act, machine, work} hvis alle dagene har nøyaktig samme ene aktivitet, ellers null */
 function sameSetup(techId, days){
@@ -53,22 +53,25 @@ function extraPreview(sh){
   return `${d} skiftdag${d === 1 ? '' : 'er'} på ${esc(shiftOf(+sh.shift).name)}: ${esc(ddmm(sh.from))} – ${esc(ddmm(u))}`;
 }
 function entryLabel(e){
-  const a = act(e.act); if (!a || a.type !== '1500H') return esc(label(e));
+  const a = act(e.act); if (!hasMW(a)) return esc(label(e));
   const ms = S.machines.filter(m => m.active || m.name === e.machine).map(m => m.name);
-  return `<span class="ln1">LMS${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
+  return `<span class="ln1">${esc(a.name)}${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
 }
 
 /* ---------- føringer ---------- */
-function resetHours(sh){ const t = tech(sh.tech); const rem = stdHours(t, sh.date) - sumH(manualOf(t.id, sh.date)); sh.hours = rem > 0 ? rem : 1; }
+/* Ny aktivitet får timene som ikke er dekket ennå. På en dag med LMS standard blir det 0: aktiviteten legges til
+   som egen linje, og LMS standard krymper når timene justeres opp. */
+const openHours = (t, date) => Math.max(0, stdHours(t, date) - sumH(entriesOf(t.id, date)));
+function resetHours(sh){ sh.hours = openHours(tech(sh.tech), sh.date); }
 function addEntry(sh){
   const a = act(sh.act); const hrs = +sh.hours;
   if (!a) return;
-  if (!(hrs > 0)){ toast('Velg antall timer først'); return; }
-  const same = manualOf(sh.tech, sh.date).find(e => e.act === a.id && (a.type !== '1500H' || (sh.machine && sh.work && e.machine === sh.machine && e.work === sh.work)));
+  if (!(hrs >= 0)){ toast('Velg antall timer først'); return; }
+  const same = manualOf(sh.tech, sh.date).find(e => e.act === a.id && (!hasMW(a) || (sh.machine && sh.work && e.machine === sh.machine && e.work === sh.work)));
   let id;
   if (same){ same.hours = +same.hours + hrs; id = same.id; }
-  else { id = uid(); S.entries.push({id, date:sh.date, tech:sh.tech, act:a.id, machine:a.type==='1500H'?sh.machine:'', work:a.type==='1500H'?sh.work:'', hours:hrs}); }
-  toast((a.type === '1500H' ? (sh.machine || 'LMS') + (sh.work ? ' · ' + sh.work : '') : a.name) + (same ? ' · +' : ' · ') + fmtH(hrs) + ' t');
+  else { id = uid(); S.entries.push({id, date:sh.date, tech:sh.tech, act:a.id, machine:hasMW(a)?sh.machine||'':'', work:hasMW(a)?sh.work||'':'', hours:hrs}); }
+  toast([a.name, sh.machine, sh.work].filter(Boolean).join(' · ') + (same ? ' · +' : ' · ') + fmtH(hrs) + ' t');
   UI.flash = id; sh.toTop = true;
   recomputeAuto(sh.tech, sh.date);
   save(); sh.act = null; sh.machine = null; sh.work = null; resetHours(sh); renderSheet(); render();
@@ -82,13 +85,13 @@ document.addEventListener('pointerup', () => { pointerIsDown = false; if (pendin
 document.addEventListener('pointercancel', () => { pointerIsDown = false; if (pendingSheet) setTimeout(flushSheet, 0); }, true);
 function setEntryHours(id, h, deferred){
   const e = S.entries.find(x => x.id === id); if (!e) return;
-  e.hours = Math.min(24, Math.max(0.5, Math.round((+String(h).replace(',', '.') || 0) * 2) / 2));
+  e.hours = Math.min(24, Math.max(0, Math.round((+String(h).replace(',', '.') || 0) * 2) / 2));
   if (e.auto){ e.auto = false; S.noAuto[e.date + '|' + e.tech] = true; }
   recomputeAuto(e.tech, e.date); save();
   if (UI.sheet) resetHours(UI.sheet);
   if (deferred) deferSheet(); else { if (UI.sheet) renderSheet(); render(); }
 }
-const ready1500 = sh => sh.mode === 'tech' && act(sh.act)?.type === '1500H' && sh.machine && sh.work;
+const ready1500 = sh => sh.mode === 'tech' && hasMW(act(sh.act)) && sh.machine && sh.work;
 
 /* ---------- tegning ---------- */
 function actPicker(acts, sel){
@@ -113,10 +116,10 @@ export function renderSheet(){
       <div class="sec"><textarea id="copy-txt" readonly>${esc(sh.text)}</textarea></div>`;
   } else if (sh.mode === 'bulk'){
     const s = shiftOf(sh.shift); const ph = phase(s.id, sh.date);
-    const a = act(sh.act); const ok = a && (a.type !== '1500H' || (sh.machine && sh.work)) && sh.count > 0;
+    const a = act(sh.act); const ok = a && (a.type !== '1500H' || (sh.machine && sh.work)) && sh.count > 0;   /* LMS krever maskin og arbeid, Line/Mod ikke */
     body = `<div class="sheet-h"><div><div class="t">Sett alle · ${esc(s.name)}</div><div class="s">${esc(longDate(sh.date))} · ${PH[ph.key]} ${timeTxt(ph.key,sh.date)} · ${sh.count} teknikere med bare LMS standard får hel dag (${fmtH(workHours(ph.key,sh.date))} t)</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       <div class="sec"><h3>Aktivitet</h3>${actPicker(S.acts.filter(x => !x.role), sh.act)}</div>
-      ${a && a.type === '1500H' ? h1500Picker(sh) : ''}
+      ${hasMW(a) ? h1500Picker(sh) : ''}
       <div class="sheet-f"><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="bulk-apply" ${ok?'':'disabled'}>Sett ${sh.count} teknikere</button></div>`;
   } else if (sh.mode === 'range'){
     const t = tech(sh.tech); const days = rangeDays(t.id, sh.from, sh.to);
@@ -131,7 +134,7 @@ export function renderSheet(){
     body = `<div class="sheet-h"><div><div class="t">${esc(t.name)}</div><div class="s">${esc(ddmm(sh.from))} – ${esc(ddmm(sh.to))} · ${esc(shiftOf(t.shift).name)} · ${days.length} ${off ? (days.length === 1 ? 'fridag (overtid)' : 'fridager (overtid)') : (days.length === 1 ? 'arbeidsdag' : 'arbeidsdager')} · ${fmtH(tot)} t${skip ? ` · ${skip} ${skip === 1 ? 'dag' : 'dager'} hoppes over` : ''}</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       ${days.length ? `<div class="sec"><h3>Ført nå</h3><div class="preview">${now}</div></div>` : ''}
       <div class="sec"><h3>Aktivitet</h3>${actPicker(allowed(t), sh.act)}</div>
-      ${a && a.type === '1500H' ? h1500Picker(sh) : ''}
+      ${hasMW(a) ? h1500Picker(sh) : ''}
       <div class="hint">Hver dag får full arbeidsdag med aktiviteten.${busy ? ` Føringene på ${busy} ${busy === 1 ? 'dag' : 'dager'} erstattes.` : ''}</div>
       <div class="sheet-f"><button class="btn danger lead" data-action="range-clear">Nullstill dagene</button><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="range-apply" ${ok ? '' : 'disabled'}>Før ${days.length} ${days.length === 1 ? 'dag' : 'dager'}</button></div>`;
   } else if (sh.mode === 'extra'){
@@ -164,14 +167,14 @@ export function renderSheet(){
       </div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       <div class="sec"><div class="row" style="justify-content:space-between"><h3>Dagen</h3><span class="num daytxt ${rem < 0 ? 'over' : rem === 0 ? 'full' : ''}">${fmtH(sum)} / ${fmtH(std)} t · ${remTxt}</span></div>
         <div class="daybar">${list.map(e => `<i style="width:${(+e.hours||0)/scale*100}%;background:${color(act(e.act))}" title="${esc(label(e))} ${fmtH(e.hours)} t"></i>`).join('')}</div>
-        ${list.length ? list.map(e => `<div class="entry ${e.id === UI.flash ? 'flash' : ''}"><i class="edot" style="background:${color(act(e.act))}"></i>${act(e.act)?.type === '1500H' ? `<span class="lbl two">${entryLabel(e)}</span>` : `<span class="lbl">${entryLabel(e)}${e.auto ? '<span class="atag">standard</span>' : ''}</span>`}
+        ${list.length ? list.map(e => `<div class="entry ${e.id === UI.flash ? 'flash' : ''}"><i class="edot" style="background:${color(act(e.act))}"></i>${hasMW(act(e.act)) ? `<span class="lbl two">${entryLabel(e)}</span>` : `<span class="lbl">${entryLabel(e)}${e.auto ? '<span class="atag">standard</span>' : ''}</span>`}
           <span class="stepper"><button class="icon-btn sm" data-action="step" data-e="${e.id}" data-d="-0.5" aria-label="En halv time mindre">−</button><input class="hours-in" type="text" inputmode="decimal" id="eh-${e.id}" data-eh="${e.id}" value="${fmtH(e.hours)}" aria-label="Timer ${esc(label(e))}"><button class="icon-btn sm" data-action="step" data-e="${e.id}" data-d="0.5" aria-label="En halv time mer">+</button></span>
           <button class="icon-btn sm danger del" data-action="del" data-e="${e.id}" aria-label="Slett ${esc(label(e))}">×</button></div>`).join('') : '<div class="hint">Ingenting ført ennå.</div>'}
-        ${list.some(e => act(e.act)?.type === '1500H') ? `<div class="row newm"><input type="text" id="sh-newm" class="field" placeholder="Ny maskin, f.eks. ONX" value="${esc(sh.newM || '')}" aria-label="Ny maskin"><button class="btn sm" data-action="add-m">Legg til maskin</button></div>` : ''}
+        ${list.some(e => hasMW(act(e.act))) ? `<div class="row newm"><input type="text" id="sh-newm" class="field" placeholder="Ny maskin, f.eks. ONX" value="${esc(sh.newM || '')}" aria-label="Ny maskin"><button class="btn sm" data-action="add-m">Legg til maskin</button></div>` : ''}
       </div>
       <div class="sec addbox"><h3>Legg til aktivitet</h3>
         ${actPicker(allowed(t), sh.act)}
-        <div class="hint">${(() => { const rm = std - sumH(list.filter(e => !e.auto)); return rm > 0 ? `Legges til med ${fmtH(rm)} t.` : 'Dagen er full. Ny aktivitet legges til med 1 t.'; })()} ${offDay(t, sh.date) ? 'Fridag: alt som føres her regnes som overtid.' : 'LMS standard fyller automatisk resten av dagen.'} Juster timene på raden.</div>
+        <div class="hint">${(() => { const rm = openHours(t, sh.date); return rm > 0 ? `Legges til med ${fmtH(rm)} t.` : 'Legges til som ny linje med 0 t.'; })()} ${offDay(t, sh.date) ? 'Fridag: alt som føres her regnes som overtid.' : 'LMS standard fyller automatisk resten av dagen.'} Juster timene på raden.</div>
       </div>
       <div class="sheet-f"><button class="btn primary" data-action="close">Ferdig</button></div>`;
   }
@@ -196,30 +199,31 @@ export const actions = {
     for (let n = dn(sh.from); n <= Math.min(dn(until), dn(todayIso())); n++) recomputeAuto(nt.id, isoOf(n));
     save(); UI.sheet = null; renderSheet(); render(); toast(name + ' lagt til på ' + shiftOf(+sh.shift).name + ' ' + ddmm(sh.from) + '–' + ddmm(until)); },
   'pick-act'(el, sh){ sh.act = el.dataset.a; const a0 = act(sh.act);
-    if (sh.mode === 'tech'){ if (a0.type === '1500H'){ const d0 = last1500(sh.tech); sh.machine = d0.machine; sh.work = d0.work; } else { sh.machine = null; sh.work = null; } addEntry(sh); return; }
-    if (a0.type !== '1500H'){ sh.machine = null; sh.work = null; } renderSheet(); },
-  'pick-m'(el, sh){ sh.machine = el.dataset.m; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
-  'pick-w'(el, sh){ sh.work = el.dataset.w; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
+    if (sh.mode === 'tech'){ if (hasMW(a0)){ const d0 = last1500(sh.tech); sh.machine = d0.machine; sh.work = d0.work; } else { sh.machine = null; sh.work = null; } addEntry(sh); return; }
+    if (!hasMW(a0)){ sh.machine = null; sh.work = null; } renderSheet(); },
+  /* trykk på valgt maskin/arbeid igjen for å fjerne valget (Line/Mod kan føres uten) */
+  'pick-m'(el, sh){ sh.machine = sh.machine === el.dataset.m && sh.mode !== 'tech' ? null : el.dataset.m; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
+  'pick-w'(el, sh){ sh.work = sh.work === el.dataset.w && sh.mode !== 'tech' ? null : el.dataset.w; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
   'add-m'(el, sh){ const n = val('sh-newm').toUpperCase(); if (!n) return; if (!S.machines.some(m => m.name === n)) S.machines.push({id:uid(), name:n, active:true}); else S.machines.find(m => m.name===n).active = true; sh.newM = '';
-    if (sh.mode === 'tech'){ const tgt = entriesOf(sh.tech, sh.date).filter(e => e.act === 'h1500' && !e.machine).pop(); if (tgt) tgt.machine = n; save(); renderSheet(); render(); toast('Maskin ' + n + ' lagt til'); return; }
+    if (sh.mode === 'tech'){ const tgt = entriesOf(sh.tech, sh.date).filter(e => hasMW(act(e.act)) && !e.machine).pop(); if (tgt) tgt.machine = n; save(); renderSheet(); render(); toast('Maskin ' + n + ' lagt til'); return; }
     sh.machine = n; save(); if (ready1500(sh)) addEntry(sh); else renderSheet(); },
   step(el){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (e0) setEntryHours(e0.id, +e0.hours + +el.dataset.d); },
   del(el, sh){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (!e0) return; const t0 = tech(sh.tech);
     ask({title:'Slette føringen?', text:label(e0)+' · '+fmtH(e0.hours)+' t for '+t0.name+' '+ddmm(sh.date)+'.', ok:'Slett', fn:() => {
       S.entries = S.entries.filter(x => x.id !== e0.id); if (e0.auto) S.noAuto[e0.date + '|' + e0.tech] = true; recomputeAuto(e0.tech, e0.date); save();
-      sh.hours = Math.max(0, stdHours(t0, sh.date) - sumH(entriesOf(t0.id, sh.date))) || stdHours(t0, sh.date);
+      resetHours(sh);
       renderSheet(); render(); toast('Føring slettet'); }}); },
   'bulk-apply'(el, sh){
     const a = act(sh.act); let n = 0;
     for (const t of S.techs.filter(t => t.shift === sh.shift && activeOn(t, sh.date) && manualOf(t.id, sh.date).length === 0)){
       S.entries = S.entries.filter(e => !(e.tech === t.id && e.date === sh.date && e.auto));
-      S.entries.push({id:uid(), date:sh.date, tech:t.id, act:a.id, machine:a.type==='1500H'?sh.machine:'', work:a.type==='1500H'?sh.work:'', hours:stdHours(t, sh.date)}); n++;
+      S.entries.push({id:uid(), date:sh.date, tech:t.id, act:a.id, machine:hasMW(a)?sh.machine||'':'', work:hasMW(a)?sh.work||'':'', hours:stdHours(t, sh.date)}); n++;
     }
-    save(); closeSheet(); toast(n + ' teknikere satt til ' + (a.type==='1500H' ? 'LMS '+sh.machine : a.name)); },
+    save(); closeSheet(); toast(n + ' teknikere satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · ')); },
   'range-apply'(el, sh){
     const a = act(sh.act); if (!a) return;
     const n = applyRange(sh.tech, sh.from, sh.to, a.id, sh.machine || '', sh.work || ''); save(); closeSheet();
-    toast(tech(sh.tech).name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ': ' + n + ' ' + (n === 1 ? 'dag' : 'dager') + ' satt til ' + (a.type === '1500H' ? 'LMS ' + sh.machine + ' · ' + sh.work : a.name)); },
+    toast(tech(sh.tech).name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ': ' + n + ' ' + (n === 1 ? 'dag' : 'dager') + ' satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · ')); },
   'range-clear'(el, sh){ const t0 = tech(sh.tech);
     ask({title:'Nullstille dagene?', text:'Alle føringer for ' + t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' fjernes. LMS standard fyller arbeidsdagene igjen.', ok:'Nullstill', fn:() => {
       clearRange(sh.tech, sh.from, sh.to); save(); closeSheet(); toast(t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' nullstilt'); }}); },
