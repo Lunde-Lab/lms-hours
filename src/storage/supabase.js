@@ -5,7 +5,7 @@
    - Opprett prosjekt, kjør utkastene i supabase/drafts/ manuelt og legg skiftledere i allowlist (shift_leaders).
    - Fyll SUPABASE_URL og SUPABASE_ANON_KEY i config.js (lokalt) og i deploy-workflowen (fra repo-variabler).
    - Last supabase-js som ES-modul (f.eks. fra esm.sh med låst versjon) og opprett klienten i init().
-   - Innlogging for skiftledere (magisk lenke e.l.) før loadAll().
+   - Innlogging for skiftledere og admin (magisk lenke e.l.) før loadAll(); profilen er raden i shift_leaders.
    - Gå over fra saveAll til granulære kall i state.js/visningene.
    - Flytt autoFill (automatisk LMS-standard) til databasen eller gjør den idempotent på tvers av klienter. */
 
@@ -13,8 +13,8 @@ const notReady = name => () => Promise.reject(new Error(`Supabase-adapteren er i
 
 /* TODO: createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY) og sjekk innlogging */
 export const init = notReady('init');
-/* TODO: les shifts, technicians (+ technician_roles), roles, activities, machines, work_types, entries, no_auto, day_notes
-   og bygg samme form som local.js gir: {techs, shifts, roles, acts, machines, work, entries, noAuto, notes, …} */
+/* TODO: les shifts, technicians (+ technician_roles), roles, activities, machines, work_types, entries, no_auto, day_notes,
+   shift_leaders (profiler) og bygg samme form som local.js gir: {techs, shifts, roles, acts, machines, work, entries, noAuto, notes, profiles, …} */
 export const loadAll = notReady('loadAll');
 /* TODO: ikke i bruk med Supabase; erstattes av de granulære kallene under */
 export const saveAll = notReady('saveAll');
@@ -42,3 +42,7 @@ export const saveWorkTypes = notReady('saveWorkTypes');
 export const setNoAuto = notReady('setNoAuto');
 /* TODO: upsert/delete i day_notes */
 export const setNote = notReady('setNote');
+/* TODO: upsert i shift_leaders (name, role, shift_id); bare admin (RLS) */
+export const upsertProfile = notReady('upsertProfile');
+/* TODO: delete fra shift_leaders; bare admin (RLS) */
+export const deleteProfile = notReady('deleteProfile');

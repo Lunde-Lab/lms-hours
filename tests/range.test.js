@@ -27,8 +27,8 @@ test('erstatter føringene med hel dag av aktiviteten', () => {
     [[['ferie', 9, false]], [['ferie', 8.5, false]], [['ferie', 9.5, false]]]);
 });
 test('LMS får maskin og arbeid', () => {
-  applyRange(t.id, '2026-01-12', '2026-01-13', 'h1500', 'ONX', 'Inspection');
-  assert.deepEqual(entriesOf(t.id, '2026-01-13').map(e => [e.machine, e.work]), [['ONX', 'Inspection']]);
+  applyRange(t.id, '2026-01-12', '2026-01-13', 'h1500', 'ONA', 'Inspection');
+  assert.deepEqual(entriesOf(t.id, '2026-01-13').map(e => [e.machine, e.work]), [['ONA', 'Inspection']]);
 });
 test('nullstill fjerner føringer og slår på LMS-standard igjen', () => {
   applyRange(t.id, '2026-01-05', '2026-01-06', 'kurs');

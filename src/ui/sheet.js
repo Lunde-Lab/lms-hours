@@ -1,8 +1,8 @@
-/* Arket som glir opp nederst: føring for én tekniker, «Sett alle», ekstra personell, roller og kopier. */
+/* Arket som glir opp nederst: føring for én tekniker, flere dager, ekstra personell, roller og kopier. */
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, hasMW, lacksMW, machinesFor, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
+  sumH, label, hasMW, lacksMW, machinesFor, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange, moveTech, removeTech } from '../state.js';
 import { render } from '../render.js';
 import { toast, toastUndo, snapshot } from './toast.js';
 import { ask, promptText } from './dialog.js';
@@ -12,11 +12,6 @@ export function openSheet(techId, date = UI.date){
   if (!S.entries.some(e => e.tech === techId && e.date === date)){ recomputeAuto(techId, date); save(); }
   UI.sheet = {mode:'tech', tech:techId, date, act:null, machine:null, work:null, hours:0};
   resetHours(UI.sheet);
-  renderSheet();
-}
-export function openBulk(shiftId){
-  const ts = S.techs.filter(t => t.shift === shiftId && activeOn(t, UI.date) && manualOf(t.id,UI.date).length === 0);
-  UI.sheet = {mode:'bulk', shift:shiftId, date:UI.date, act:null, machine:null, work:null, count:ts.length};
   renderSheet();
 }
 /* flere dager for én tekniker, valgt ved å dra i kalenderen */
@@ -148,13 +143,6 @@ export function renderSheet(){
   if (sh.mode === 'copy'){
     body = `<div class="sheet-h"><div><div class="t">Kopier</div><div class="s">Marker teksten og kopier den manuelt.</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       <div class="sec"><textarea id="copy-txt" readonly>${esc(sh.text)}</textarea></div>`;
-  } else if (sh.mode === 'bulk'){
-    const s = shiftOf(sh.shift); const ph = phase(s.id, sh.date);
-    const a = act(sh.act); const ok = a && (a.type !== '1500H' || (sh.machine && sh.work)) && sh.count > 0;   /* LMS krever maskin og arbeid, Line/Mod ikke */
-    body = `<div class="sheet-h"><div><div class="t">Sett alle · ${esc(s.name)}</div><div class="s">${esc(longDate(sh.date))} · ${PH[ph.key]} ${timeTxt(ph.key,sh.date)} · ${sh.count} teknikere med bare LMS standard får hel dag (${fmtH(workHours(ph.key,sh.date))} t)</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
-      <div class="sec"><h3>Aktivitet</h3>${actPicker(S.acts.filter(x => !x.role), sh.act)}</div>
-      ${hasMW(a) ? h1500Picker(sh) : ''}
-      <div class="sheet-f"><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="bulk-apply" ${ok?'':'disabled'}>Sett ${sh.count} teknikere</button></div>`;
   } else if (sh.mode === 'range'){
     const pairs = rangePairs(sh.segs); const ts = [...new Set(sh.segs.map(g => g.t))].map(tech);
     const off = pairs.length > 0 && pairs.every(x => !workDay(x.t, x.d));
@@ -193,9 +181,10 @@ export function renderSheet(){
   } else if (sh.mode === 'roles'){
     const t = tech(sh.tech);
     body = `<div class="sheet-h"><div><div class="t">${esc(t.name)}</div><div class="s">${esc(shiftOf(t.shift).name)} · ${t.roles.length} ${t.roles.length === 1 ? 'rolle' : 'roller'} valgt</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      <div class="sec"><h3>Skift</h3><div class="grid-btns">${S.shifts.map(x => `<button class="opt" data-action="tech-shift" data-t="${t.id}" data-s="${x.id}" aria-pressed="${t.shift === x.id}">${esc(x.name)}</button>`).join('')}</div></div>
       <div class="sec"><h3>Roller</h3><div class="grid-btns">${S.roles.map(r => `<button class="opt" data-action="role" data-t="${t.id}" data-r="${esc(r)}" aria-pressed="${t.roles.includes(r)}"><span class="cb" aria-hidden="true">✓</span>${esc(r)}</button>`).join('')}</div></div>
-      <div class="muted" style="font-size:13px">Rollene styrer hvilke aktiviteter teknikeren kan føres på.</div>
-      <div class="sheet-f"><button class="btn primary" data-action="close">Ferdig</button></div>`;
+      <div class="muted" style="font-size:13px">Rollene styrer hvilke aktiviteter teknikeren kan føres på. Ved bytte av skift beholdes føringene.</div>
+      <div class="sheet-f"><button class="btn danger lead" data-action="rm-tech" data-t="${t.id}">Fjern tekniker</button><button class="btn primary" data-action="close">Ferdig</button></div>`;
   } else {
     const t = tech(sh.tech); const list = entriesOf(t.id, sh.date); const std = stdHours(t, sh.date);
     const sum = sumH(list); const rem = std - sum; const ph = phase(t.shift, sh.date);
@@ -247,7 +236,7 @@ export const actions = {
   'pick-m'(el, sh){ sh.machine = sh.machine === el.dataset.m && sh.mode !== 'tech' ? null : el.dataset.m; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
   'pick-w'(el, sh){ sh.work = sh.work === el.dataset.w && sh.mode !== 'tech' ? null : el.dataset.w; if (ready1500(sh)) addEntry(sh); else renderSheet(); },
   /* ny maskin i egen liten dialog */
-  'new-m'(el, sh){ promptText({title:'Ny maskin', label:'Registrering', placeholder:'F.eks. ONX', ok:'Legg til', upper:true, fn:n => addMachine(sh, n)}); },
+  'new-m'(el, sh){ promptText({title:'Ny maskin', label:'Registrering', placeholder:'F.eks. ONA', ok:'Legg til', upper:true, fn:n => addMachine(sh, n)}); },
   step(el){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (e0) setEntryHours(e0.id, +e0.hours + +el.dataset.d); },
   del(el, sh){ const e0 = S.entries.find(x => x.id === el.dataset.e); if (!e0) return; const t0 = tech(sh.tech);
     ask({title:'Slette føringen?', text:label(e0)+' · '+fmtH(e0.hours)+' t for '+t0.name+' '+ddmm(sh.date)+'.', ok:'Slett', fn:() => {
@@ -255,13 +244,6 @@ export const actions = {
       S.entries = S.entries.filter(x => x.id !== e0.id); if (e0.auto) S.noAuto[e0.date + '|' + e0.tech] = true; recomputeAuto(e0.tech, e0.date); save();
       resetHours(sh);
       renderSheet(); render(); toastUndo('Føring slettet', snap); }}); },
-  'bulk-apply'(el, sh){
-    const a = act(sh.act); let n = 0; const snap = snapshot();
-    for (const t of S.techs.filter(t => t.shift === sh.shift && activeOn(t, sh.date) && manualOf(t.id, sh.date).length === 0)){
-      S.entries = S.entries.filter(e => !(e.tech === t.id && e.date === sh.date && e.auto));
-      S.entries.push({id:uid(), date:sh.date, tech:t.id, act:a.id, machine:hasMW(a)?sh.machine||'':'', work:hasMW(a)?sh.work||'':'', hours:stdHours(t, sh.date)}); n++;
-    }
-    save(); closeSheet(); toastUndo(n + ' teknikere satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · '), snap); },
   'range-apply'(el, sh){
     const a = act(sh.act); if (!a) return; const snap = snapshot();
     let n = 0; for (const g of sh.segs) n += applyRange(g.t, g.from, g.to, a.id, sh.machine || '', sh.work || '');
@@ -271,6 +253,11 @@ export const actions = {
     ask({title:'Nullstille dagene?', text:'Alle føringer for ' + rangeTxt(sh.segs) + ' fjernes. LMS standard fyller arbeidsdagene igjen.', ok:'Nullstill', fn:() => {
       const snap = snapshot(); for (const g of sh.segs) clearRange(g.t, g.from, g.to); save(); closeSheet(); toastUndo(rangeTxt(sh.segs) + ' nullstilt', snap); }}); },
   roles(el){ UI.sheet = {mode:'roles', tech:el.dataset.t}; renderSheet(); },
+  'tech-shift'(el){ const t = tech(el.dataset.t); if (!t) return; const sid = +el.dataset.s; const snap = snapshot();
+    if (!moveTech(t.id, sid)) return; save(); renderSheet(); render(); toastUndo(t.name + ' flyttet til ' + shiftOf(sid).name, snap); },
+  'rm-tech'(el){ const t0 = tech(el.dataset.t); if (!t0) return; const n = S.entries.filter(x => x.tech === t0.id).length;
+    ask({title:'Fjerne '+t0.name+'?', text: n ? n+' føringer for '+t0.name.split(' ')[0]+' blir også slettet.' : 'Teknikeren fjernes fra føring, kalender og rapport.', ok:'Fjern', fn:() => {
+      const snap = snapshot(); removeTech(t0.id); save(); closeSheet(); toastUndo(t0.name+' fjernet', snap); }}); },
   role(el){ const t = tech(el.dataset.t); const r = el.dataset.r; t.roles = t.roles.includes(r) ? t.roles.filter(x => x !== r) : [...t.roles, r]; t.roles.sort((x, y) => S.roles.indexOf(x) - S.roles.indexOf(y)); save(); if (UI.sheet) renderSheet(); render(); }
 };
 

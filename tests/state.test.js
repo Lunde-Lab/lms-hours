@@ -1,7 +1,8 @@
 /* LMS-standard i tilstanden: automatisk føring fyller resten av arbeidsdagen. */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, lacksMW, machinesFor, label, noteOf, setNote } from '../src/state.js';
+import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, lacksMW, machinesFor, label, noteOf, setNote, moveTech, removeTech } from '../src/state.js';
+import { FIXED_MACHINES } from '../src/model.js';
 
 setStorage({ saveAll(){} });
 let t;
@@ -36,7 +37,7 @@ test('migrering legger til nye LMS-arbeid og beholder egne', () => {
 });
 test('Line og Mod føres med maskin og arbeid, som LMS', () => {
   assert.deepEqual(S.acts.filter(a => hasMW(a)).map(a => a.id), ['line', 'h1500', 'mod']);
-  assert.equal(label({act:'line', machine:'ONX', work:'Repair'}), 'Line · ONX · Repair');
+  assert.equal(label({act:'line', machine:'ONA', work:'Repair'}), 'Line · ONA · Repair');
   assert.equal(label({act:'h1500', machine:'', work:''}), 'LMS');
 });
 test('migrering gir Line og Mod maskin og arbeid i lagret tilstand', () => {
@@ -54,13 +55,13 @@ test('notat per tekniker og dag; tomt notat fjernes', () => {
 test('Fravær er en fast aktivitet og legges til i lagret tilstand', () => {
   const o = freshState(); o.acts = o.acts.filter(a => a.id !== 'fravaer');
   const m = migrate(o);
-  assert.deepEqual(m.acts.map(a => a.id), ['line','h1500','ass','hs','kurs','mod','ferie','avsp','fravaer','annet']);
+  assert.deepEqual(m.acts.map(a => a.id), ['line','h1500','ass','assm','hs','kurs','mod','ferie','avsp','fravaer','annet']);
   assert.equal(m.acts.find(a => a.id === 'fravaer').name, 'Fravær');
 });
 test('LMS uten maskin eller arbeid mangler noe; Line uten maskin gjør ikke det', () => {
   assert.equal(lacksMW({act:'h1500', machine:'', work:'', hours:9}), true);
-  assert.equal(lacksMW({act:'h1500', machine:'ONX', work:'', hours:9}), true);
-  assert.equal(lacksMW({act:'h1500', machine:'ONX', work:'Sheet', hours:9}), false);
+  assert.equal(lacksMW({act:'h1500', machine:'ONA', work:'', hours:9}), true);
+  assert.equal(lacksMW({act:'h1500', machine:'ONA', work:'Sheet', hours:9}), false);
   assert.equal(lacksMW({act:'h1500', machine:'', work:'', hours:0}), false);
   assert.equal(lacksMW({act:'line', machine:'', work:'', hours:9}), false);
 });
@@ -71,4 +72,44 @@ test('Line kan velge alle maskiner, LMS og Mod bare de i dokk', () => {
   assert.deepEqual(names('h1500'), ['ONX']);
   assert.deepEqual(names('mod'), ['ONX']);
   assert.deepEqual(names('h1500', 'ONY'), ['ONX', 'ONY']);   // allerede valgt ferdig maskin vises fortsatt
+});
+
+test('faste maskiner finnes alltid og starter som ferdig; egne maskiner og status beholdes', () => {
+  assert.deepEqual(S.machines.map(m => m.name), FIXED_MACHINES);
+  assert.equal(S.machines.every(m => !m.active), true);
+  const o = freshState(); o.machines = [{id:'x', name:'OIB', active:true}, {id:'y', name:'TEST', active:true}];
+  const m = migrate(o);
+  assert.deepEqual(m.machines.map(x => x.name), [...FIXED_MACHINES, 'TEST']);
+  assert.equal(m.machines.find(x => x.name === 'OIB').active, true);
+  assert.equal(m.machines.find(x => x.name === 'OIC').active, false);
+});
+test('Assessment er en fast aktivitet uten rolle', () => {
+  const o = freshState(); o.acts = o.acts.filter(a => a.id !== 'assm');
+  const a = migrate(o).acts.find(x => x.id === 'assm');
+  assert.equal(a.name, 'Assessment'); assert.equal(a.role, '');
+});
+test('tekniker kan flyttes til et annet skift; føringene beholdes', () => {
+  S.entries.push({id:'m4', date:'2026-01-05', tech:t.id, act:'kurs', machine:'', work:'', hours:9});
+  assert.equal(moveTech(t.id, 2), true);
+  assert.equal(t.shift, 2);
+  assert.equal(S.entries.some(e => e.id === 'm4'), true);
+  assert.equal(moveTech(t.id, 2), false);
+  assert.equal(moveTech(t.id, 9), false);
+});
+test('fjerning av tekniker sletter føringer og notater', () => {
+  S.entries.push({id:'m5', date:'2026-01-05', tech:t.id, act:'kurs', machine:'', work:'', hours:9});
+  setNote(t.id, '2026-01-05', 'Notat');
+  removeTech(t.id);
+  assert.equal(S.techs.some(x => x.id === t.id), false);
+  assert.equal(S.entries.some(e => e.tech === t.id), false);
+  assert.equal(noteOf(t.id, '2026-01-05'), '');
+});
+test('migrering: OWS blir ONS, ONX og ONZ fjernes', () => {
+  const o = freshState();
+  o.machines = [{id:'w', name:'OWS', active:true}, {id:'x', name:'ONX', active:true}, {id:'z', name:'ONZ', active:false}];
+  o.entries = [{id:'e1', date:'2026-01-05', tech:o.techs[0].id, act:'h1500', machine:'OWS', work:'Sheet', hours:9}];
+  const m = migrate(o);
+  assert.deepEqual(m.machines.map(x => x.name), FIXED_MACHINES);
+  assert.equal(m.machines.find(x => x.name === 'ONS').active, true);
+  assert.equal(m.entries[0].machine, 'ONS');
 });

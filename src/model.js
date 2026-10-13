@@ -1,5 +1,6 @@
 /* Domenemodell: faste aktiviteter og roller, skiftplan og arbeidstider.
    Eksempeldata bruker bare anonyme navn («Tekniker 1-01» osv.). */
+import { defaultProfiles } from './profiles.js';
 
 export const VERSION = 9;
 export const PH = {K:'Kveld', H:'Helg', D:'Dag', F:'Fri'};
@@ -19,12 +20,13 @@ export const FIXED_ROLES = ['Assessor','B1','B2','CRS','Independent','RGR','Hot 
    (se lmsFill i schedule.js og recomputeAuto/autoFill i state.js). */
 export const LMS = 'h1500';
 
-/* Faste aktiviteter. color er indeks i --a1 … --a10. mw: føres med maskin og arbeid (LMS har det alltid).
+/* Faste aktiviteter. color er indeks i --a1 … --a11. mw: føres med maskin og arbeid (LMS har det alltid).
    allM: kan velge alle maskiner; ellers bare de som er «I dokk». */
 export const ACTIVITIES = () => [
   {id:'line',name:'Line',code:'L',role:'',type:'n',color:1,mw:true,allM:true},
   {id:LMS,name:'LMS',code:'L',role:'',type:'1500H',color:2},
   {id:'ass',name:'Assessor',code:'A',role:'Assessor',type:'n',color:3},
+  {id:'assm',name:'Assessment',code:'As',role:'',type:'n',color:11},
   {id:'hs',name:'Hot Section',code:'HS',role:'Hot Section',type:'n',color:4},
   {id:'kurs',name:'Kurs',code:'K',role:'',type:'n',color:6},
   {id:'mod',name:'Mod',code:'M',role:'',type:'n',color:5,mw:true},
@@ -33,7 +35,11 @@ export const ACTIVITIES = () => [
   {id:'fravaer',name:'Fravær',code:'Fr',role:'',type:'n',color:10},   /* syk eller fri */
   {id:'annet',name:'Annet',code:'An',role:'',type:'n',color:7}
 ];
-export const LOCKED = ['line',LMS,'ass','hs','kurs','mod','ferie','avsp','fravaer','annet'];
+export const LOCKED = ['line',LMS,'ass','assm','hs','kurs','mod','ferie','avsp','fravaer','annet'];
+
+/* Faste maskiner. Starter som «Ferdig»; settes «I dokk» i Oppsett for å vises ved føring. */
+export const FIXED_MACHINES = ['OIA','OIB','OIC','OIE','OIF','OIG','OIH','OII','OIK','OIM','OIN','OMI','ONA','OND','ONE','ONH','ONM','ONO','ONP','ONQ','ONT','ONW','ONY','ONS'];
+export const fixedMachines = uid => FIXED_MACHINES.map(name => ({id:uid(), name, active:false}));
 
 /* Arbeid på LMS-føringer. Legges inn her (ingen UI for å endre listen). */
 export const WORK_TYPES = () => ['Sheet','Repair','Inspection','Mod','SLL','Testing','Final'];
@@ -58,7 +64,8 @@ export function freshState(uid){
     days:DAYS(), sched:SCHED(),
     roles:[...FIXED_ROLES],
     acts:ACTIVITIES(),
-    machines:[], work:WORK_TYPES(),
-    entries:[], noAuto:{}, notes:{}, autoFrom: AUTO_FROM, autoDone: null
+    machines:fixedMachines(uid), work:WORK_TYPES(),
+    entries:[], noAuto:{}, notes:{}, autoFrom: AUTO_FROM, autoDone: null,
+    profiles: defaultProfiles(uid)
   };
 }
