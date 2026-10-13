@@ -1,7 +1,7 @@
 /* LMS-standard i tilstanden: automatisk føring fyller resten av arbeidsdagen. */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, lacksMW, label, noteOf, setNote, moveTech, removeTech } from '../src/state.js';
+import { S, setState, setStorage, freshState, reindex, recomputeAuto, migrate, hasMW, lacksMW, machinesFor, label, noteOf, setNote, moveTech, removeTech } from '../src/state.js';
 import { FIXED_MACHINES } from '../src/model.js';
 
 setStorage({ saveAll(){} });
@@ -64,6 +64,14 @@ test('LMS uten maskin eller arbeid mangler noe; Line uten maskin gjør ikke det'
   assert.equal(lacksMW({act:'h1500', machine:'ONA', work:'Sheet', hours:9}), false);
   assert.equal(lacksMW({act:'h1500', machine:'', work:'', hours:0}), false);
   assert.equal(lacksMW({act:'line', machine:'', work:'', hours:9}), false);
+});
+test('Line kan velge alle maskiner, LMS og Mod bare de i dokk', () => {
+  S.machines = [{id:'m1', name:'ONX', active:true}, {id:'m2', name:'ONY', active:false}];
+  const names = (id, cur) => machinesFor(S.acts.find(a => a.id === id), cur).map(m => m.name);
+  assert.deepEqual(names('line'), ['ONX', 'ONY']);
+  assert.deepEqual(names('h1500'), ['ONX']);
+  assert.deepEqual(names('mod'), ['ONX']);
+  assert.deepEqual(names('h1500', 'ONY'), ['ONX', 'ONY']);   // allerede valgt ferdig maskin vises fortsatt
 });
 
 test('faste maskiner finnes alltid og starter som ferdig; egne maskiner og status beholdes', () => {

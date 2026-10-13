@@ -41,3 +41,10 @@ test('føringer på fridag er overtid, på arbeidsdag ikke', () => {
   assert.equal(overtime({tech:t.id, date:'2026-01-20'}), true);    // fri
   assert.equal(overtime({tech:t.id, date:'2026-01-12'}), false);   // dag
 });
+test('flere rader: hver tekniker får sine dager', () => {
+  const u = S.techs.find(x => x.shift === 1 && x.id !== t.id);
+  applyRange(t.id, '2026-01-05', '2026-01-06', 'kurs');
+  applyRange(u.id, '2026-01-06', '2026-01-07', 'kurs');
+  assert.deepEqual(S.entries.filter(e => e.act === 'kurs').map(e => [e.tech === t.id ? 't' : 'u', e.date]).sort(),
+    [['t','2026-01-05'], ['t','2026-01-06'], ['u','2026-01-06'], ['u','2026-01-07']]);
+});

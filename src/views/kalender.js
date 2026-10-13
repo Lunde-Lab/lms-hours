@@ -68,7 +68,7 @@ export function vKal(){
       h += `</tr>`;
     }
   });
-  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den. Flere dager på én rad: dra over dem, eller klikk på første dag og hold <kbd>Shift</kbd> mens du klikker på siste.</div>`;
+  h += `</tbody></table></div><div class="muted" style="font-size:13px">Trykk på en dag for å føre eller endre den. Flere dager på én rad: dra over dem, eller klikk på første dag og hold <kbd>Shift</kbd> mens du klikker på siste. Flere rader: hold <kbd>Ctrl</kbd> mens du merker hver rad, og slipp Ctrl for å føre.</div>`;
   return h.replace('MISSING', missing ? `<div class="misses"><i></i><b>${missing} ${missing === 1 ? 'dag' : 'dager'}</b> i ${MON[m-1]} har LMS uten maskin eller arbeid. De er markert med oransje strek.</div>` : '');
 }
 
@@ -78,27 +78,31 @@ export const actions = {
   cal(el){ let [y,m] = UI.cal.split('-').map(Number); m += +el.dataset.d; if (m < 1){ m = 12; y--; } if (m > 12){ m = 1; y++; } UI.cal = y+'-'+String(m).padStart(2,'0'); render(); }
 };
 
-/* ---------- dra: velg flere dager på samme rad (bare mus/penn; berøring ruller som før) ---------- */
+/* ---------- velg flere dager: dra på én rad, Shift+klikk, og Ctrl for flere rader (bare mus/penn; berøring ruller som før) ---------- */
 let drag = null, dragged = false;
 /* Shift+klikk: første dag (anker) settes ved vanlig klikk eller Shift+klikk; Shift+klikk på en annen dag i samme rad velger perioden */
 let anchor = null, shiftDown = false;
+/* Ctrl: hvert utvalg (dra eller klikk) legges til her mens Ctrl holdes; arket åpnes når Ctrl slippes */
+let picked = [];
+const seg = g => { const [from, to] = [g.from, g.to].sort(); return {t: g.t, from, to}; };
 function markSel(){
   for (const td of document.querySelectorAll('.cal td.cell.sel')) td.classList.remove('sel');
-  if (!drag) return;
-  const [a, b] = [drag.from, drag.to].sort();
-  for (const td of drag.row.querySelectorAll('td.cell[data-d]')) if (td.dataset.d >= a && td.dataset.d <= b) td.classList.add('sel');
+  for (const g of [...picked, ...(drag ? [seg(drag)] : [])])
+    for (const td of document.querySelectorAll(`.cal td.cell[data-t="${g.t}"]`)) if (td.dataset.d >= g.from && td.dataset.d <= g.to) td.classList.add('sel');
 }
+const suppressClick = () => { dragged = true; setTimeout(() => { dragged = false; }, 0); };   /* klikket etter slippet skal ikke åpne én dag */
+function openPicked(){ const segs = picked; picked = []; markSel(); if (segs.length) setTimeout(() => openRange(segs), 0); }
 document.addEventListener('pointerdown', e => {
   if (e.button !== 0 || e.pointerType === 'touch' || UI.tab !== 'kal') return;
   const td = e.target.closest && e.target.closest('td.cell[data-t]'); if (!td) return;
   e.preventDefault();   /* ingen tekstmarkering mens man drar */
-  if (e.shiftKey){
+  if (e.shiftKey && !e.ctrlKey){
     shiftDown = true; const t = td.dataset.t, d = td.dataset.d;
-    if (anchor && anchor.t === t && anchor.d !== d){ const [a, b] = [anchor.d, d].sort(); anchor = null; markSel(); setTimeout(() => openRange(t, a, b), 0); }
+    if (anchor && anchor.t === t && anchor.d !== d){ const [a, b] = [anchor.d, d].sort(); anchor = null; markSel(); setTimeout(() => openRange([{t, from:a, to:b}]), 0); }
     else { anchor = {t, d}; markSel(); td.classList.add('sel'); toast('Hold Shift og klikk på siste dag'); }
     return;
   }
-  drag = {t: td.dataset.t, from: td.dataset.d, to: td.dataset.d, row: td.parentElement};
+  drag = {t: td.dataset.t, from: td.dataset.d, to: td.dataset.d};
   markSel();
 });
 /* Pekeren kan gli over en annen rad; da brukes bare datoen (kolonnen), raden er den man startet på. */
@@ -107,18 +111,24 @@ document.addEventListener('pointermove', e => {
   const td = e.target.closest && e.target.closest('td.cell[data-d]');
   if (td && td.dataset.d !== drag.to){ drag.to = td.dataset.d; markSel(); }
 });
-document.addEventListener('pointerup', () => {
-  if (shiftDown){ shiftDown = false; dragged = true; setTimeout(() => { dragged = false; }, 0); return; }   /* klikket etter Shift+klikk åpner ikke én dag */
-  if (!drag) return; const d = drag; drag = null; markSel();
-  if (d.from === d.to) return;   /* vanlig klikk: data-action="cell" åpner dagen */
-  const [a, b] = [d.from, d.to].sort();
-  dragged = true;   /* klikket som følger slippet skal ikke åpne én dag */
-  setTimeout(() => { dragged = false; openRange(d.t, a, b); }, 0);
+document.addEventListener('pointerup', e => {
+  if (shiftDown){ shiftDown = false; suppressClick(); return; }
+  if (!drag) return; const g = seg(drag); drag = null;
+  if (e.ctrlKey || e.metaKey){   /* Ctrl holdes: legg til og vent på flere rader */
+    if (!picked.length) toast('Merk flere rader mens du holder Ctrl. Slipp Ctrl for å føre.');
+    picked.push(g); markSel(); suppressClick(); return;
+  }
+  if (picked.length){ picked.push(g); suppressClick(); openPicked(); return; }   /* Ctrl ble sluppet midt i et dra */
+  markSel();
+  if (g.from === g.to) return;   /* vanlig klikk: data-action="cell" åpner dagen */
+  suppressClick(); setTimeout(() => openRange([g]), 0);
 });
 document.addEventListener('pointercancel', () => { drag = null; markSel(); });
+document.addEventListener('keyup', e => { if ((e.key === 'Control' || e.key === 'Meta') && picked.length && !drag) openPicked(); });
+window.addEventListener('blur', () => { if (picked.length){ picked = []; markSel(); } });   /* Ctrl+Tab o.l.: ikke la et halvferdig utvalg henge igjen */
 
-/* Escape avbryter dra-markeringen. true hvis tasten ble brukt */
+/* Escape avbryter markeringen. true hvis tasten ble brukt */
 export function onKey(e){
-  if ((drag || anchor) && e.key === 'Escape' && !UI.sheet && !UI.dlg ){ drag = null; anchor = null; markSel(); return true; }
+  if ((drag || anchor || picked.length) && e.key === 'Escape' && !UI.sheet && !UI.dlg){ drag = null; anchor = null; picked = []; markSel(); return true; }
   return false;
 }

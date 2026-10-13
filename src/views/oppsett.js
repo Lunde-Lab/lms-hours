@@ -17,7 +17,7 @@ export function vOpp(){
   h += `<div style="display:grid;gap:16px;align-content:start;min-width:0">`;
   h += `<section class="panel set"><h2>Maskiner (LMS)</h2><table><thead><tr><th>Maskin</th><th>Status</th></tr></thead><tbody>
     ${S.machines.length ? S.machines.map(m => `<tr><td class="reg">${esc(m.name)}</td><td><button class="rolebtn" data-action="m-active" data-m="${m.id}" aria-pressed="${m.active}">${m.active?'I dokk':'Ferdig'}</button></td></tr>`).join('') : '<tr><td colspan="2" class="muted">Ingen maskiner.</td></tr>'}
-    </tbody></table><div class="muted" style="font-size:13px">Bare maskiner i dokk vises ved føring. Timer på ferdige maskiner blir i rapporten.</div></section>`;
+    </tbody></table><div class="muted" style="font-size:13px">Maskiner i dokk kan velges på LMS, Line og Mod. Ferdige maskiner kan bare velges på Line. Timer på ferdige maskiner blir i rapporten.</div></section>`;
   h += vProfiles();
   h += `</div></div>`;
   return h;

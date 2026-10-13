@@ -2,7 +2,7 @@
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, hasMW, lacksMW, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange, moveTech, removeTech } from '../state.js';
+  sumH, label, hasMW, lacksMW, machinesFor, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange, moveTech, removeTech } from '../state.js';
 import { render } from '../render.js';
 import { toast, toastUndo, snapshot } from './toast.js';
 import { ask, promptText } from './dialog.js';
@@ -15,11 +15,24 @@ export function openSheet(techId, date = UI.date){
   renderSheet();
 }
 /* flere dager for én tekniker, valgt ved å dra i kalenderen */
-export function openRange(techId, from, to){
-  const cur = sameSetup(techId, rangeDays(techId, from, to));
-  UI.sheet = {mode:'range', tech:techId, from, to, act:cur ? cur.act : null, machine:cur ? cur.machine || null : null, work:cur ? cur.work || null : null};
+/* segs: [{t, from, to}], ett utvalg per rad (Ctrl gir flere rader). Overlappende utvalg på samme rad slås sammen. */
+export function openRange(segs){
+  segs = mergeSegs(segs);
+  const cur = sameSetup(rangePairs(segs));
+  UI.sheet = {mode:'range', segs, act:cur ? cur.act : null, machine:cur ? cur.machine || null : null, work:cur ? cur.work || null : null};
   renderSheet();
 }
+function mergeSegs(segs){
+  const out = [];
+  for (const g of [...segs].sort((a, b) => a.t.localeCompare(b.t) || a.from.localeCompare(b.from))){
+    const last = out[out.length - 1];
+    if (last && last.t === g.t && dn(g.from) <= dn(last.to) + 1){ if (g.to > last.to) last.to = g.to; }
+    else out.push({...g});
+  }
+  return out.sort((a, b) => S.techs.findIndex(x => x.id === a.t) - S.techs.findIndex(x => x.id === b.t) || a.from.localeCompare(b.from));
+}
+/* alle (tekniker, dag) som føringen gjelder */
+const rangePairs = segs => segs.flatMap(g => rangeDays(g.t, g.from, g.to).map(d => ({t: tech(g.t), d})));
 /* Det som er ført en dag, som én linje (LMS standard også når den bare vises som forslag). */
 function daySetup(t, d){
   const list = entriesOf(t.id, d);
@@ -32,9 +45,9 @@ function setupText(list){
     return (a ? label(e) : 'Ukjent') + (e.auto ? ' (standard)' : '') + (list.length > 1 ? ' ' + fmtH(e.hours) + ' t' : ''); }).join(' + ');
 }
 /* {act, machine, work} hvis alle dagene har nøyaktig samme ene aktivitet, ellers null */
-function sameSetup(techId, days){
-  const t = tech(techId); if (!t || !days.length) return null;
-  const ls = days.map(d => daySetup(t, d)); const k = e => e.act + '|' + (e.machine || '') + '|' + (e.work || '');
+function sameSetup(pairs){
+  if (!pairs.length) return null;
+  const ls = pairs.map(x => daySetup(x.t, x.d)); const k = e => e.act + '|' + (e.machine || '') + '|' + (e.work || '');
   return ls.every(l => l.length === 1 && k(l[0]) === k(ls[0][0])) ? ls[0][0] : null;
 }
 export function openExtra(shift, date){ UI.sheet = {mode:'extra', name:'', shift: shift || 1, from: date || UI.date, days: 1}; renderSheet(); setTimeout(() => document.getElementById('ex-name')?.focus(), 0); }
@@ -48,9 +61,9 @@ function extraPreview(sh){
 }
 function entryLabel(e){
   const a = act(e.act); if (!hasMW(a)) return esc(label(e));
-  const ms = S.machines.filter(m => m.active || m.name === e.machine).map(m => m.name);
+  const ms = machinesFor(a, e.machine);
   const miss = f => lacksMW(e) && e.date <= todayIso() && !e[f] ? ' miss' : '';   /* tomt felt som må fylles ut */
-  return `<span class="ln1">${esc(a.name)}${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini${miss('machine')}" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini${miss('work')}" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
+  return `<span class="ln1">${esc(a.name)}${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini${miss('machine')}" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${machineOpts(ms, e.machine)}</select><select class="mini${miss('work')}" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
 }
 
 /* ---------- føringer ---------- */
@@ -96,16 +109,29 @@ function addMachine(sh, n){
   sh.machine = n; save(); if (ready1500(sh)) addEntry(sh); else renderSheet();
 }
 
+/* «Tekniker 1-01 05.10–09.10» for ett utvalg, ellers antall teknikere */
+function rangeTxt(segs){
+  const n = new Set(segs.map(g => g.t)).size;
+  if (segs.length === 1) return tech(segs[0].t).name + ' ' + ddmm(segs[0].from) + (segs[0].to !== segs[0].from ? '–' + ddmm(segs[0].to) : '');
+  return n === 1 ? tech(segs[0].t).name + ' (' + segs.length + ' perioder)' : n + ' teknikere';
+}
+
 /* ---------- tegning ---------- */
 function actPicker(acts, sel){
   return `<div class="grid-btns">${acts.map(a => `<button class="opt" data-action="pick-act" data-a="${a.id}" aria-pressed="${sel===a.id}"><i class="dot" style="background:${color(a)}"></i>${esc(a.name)}</button>`).join('')}</div>`;
 }
+/* Ferdige maskiner (bare for Line) står for seg selv, så det er lett å se hvilke som er i dokk */
+function machineOpts(ms, sel){
+  const opt = m => `<option ${m.name === sel ? 'selected' : ''}>${esc(m.name)}</option>`;
+  const done = ms.filter(m => !m.active);
+  return done.length ? `<optgroup label="I dokk">${ms.filter(m => m.active).map(opt).join('')}</optgroup><optgroup label="Ferdig">${done.map(opt).join('')}</optgroup>` : ms.map(opt).join('');
+}
 function h1500Picker(sh){
-  const ms = S.machines.filter(m => m.active);
+  const ms = machinesFor(act(sh.act), sh.machine);
   return `<div class="sec"><h3>Maskin</h3><div class="pills">
-      ${ms.map(m => `<button class="pill reg" data-action="pick-m" data-m="${esc(m.name)}" aria-pressed="${sh.machine===m.name}">${esc(m.name)}</button>`).join('')}
+      ${ms.map(m => `<button class="pill reg${m.active ? '' : ' done'}" data-action="pick-m" data-m="${esc(m.name)}" aria-pressed="${sh.machine===m.name}"${m.active ? '' : ' title="Ferdig (ikke i dokk)"'}>${esc(m.name)}</button>`).join('')}
       <button class="pill" data-action="new-m">+ Ny maskin</button>
-    </div>${ms.length ? '' : '<div class="muted" style="font-size:13px">Ingen aktive maskiner ennå. Trykk «+ Ny maskin».</div>'}</div>
+    </div>${ms.length ? '' : '<div class="muted" style="font-size:13px">Ingen maskiner å velge ennå. Trykk «+ Ny maskin».</div>'}</div>
     <div class="sec"><h3>Arbeid</h3><div class="pills">${S.work.map(w => `<button class="pill" data-action="pick-w" data-w="${esc(w)}" aria-pressed="${sh.work===w}">${esc(w)}</button>`).join('')}</div></div>`;
 }
 export function renderSheet(){
@@ -118,21 +144,28 @@ export function renderSheet(){
     body = `<div class="sheet-h"><div><div class="t">Kopier</div><div class="s">Marker teksten og kopier den manuelt.</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       <div class="sec"><textarea id="copy-txt" readonly>${esc(sh.text)}</textarea></div>`;
   } else if (sh.mode === 'range'){
-    const t = tech(sh.tech); const days = rangeDays(t.id, sh.from, sh.to);
-    const off = days.length > 0 && !workDay(t, days[0]);
-    const skip = dn(sh.to) - dn(sh.from) + 1 - days.length;
-    const busy = days.filter(d => manualOf(t.id, d).length).length;
-    const tot = days.reduce((x, d) => x + stdHours(t, d), 0);
-    const a = act(sh.act); const ok = a && (a.type !== '1500H' || (sh.machine && sh.work)) && days.length > 0;
-    const groups = new Map(); for (const d of days){ const x = setupText(daySetup(t, d)); groups.set(x, (groups.get(x) || 0) + 1); }
-    const now = groups.size === 1 ? `<b>${esc([...groups.keys()][0])}</b> på ${days.length === 1 ? 'dagen' : 'alle ' + days.length + ' dagene'}`
+    const pairs = rangePairs(sh.segs); const ts = [...new Set(sh.segs.map(g => g.t))].map(tech);
+    const off = pairs.length > 0 && pairs.every(x => !workDay(x.t, x.d));
+    const skip = sh.segs.reduce((n, g) => n + dn(g.to) - dn(g.from) + 1, 0) - pairs.length;
+    const busy = pairs.filter(x => manualOf(x.t.id, x.d).length).length;
+    const tot = pairs.reduce((n, x) => n + stdHours(x.t, x.d), 0);
+    const acts = allowed(ts[0]).filter(a => ts.every(t => allowed(t).includes(a)));   /* aktiviteter alle de valgte kan føres på */
+    const a = act(sh.act); const ok = a && acts.includes(a) && (a.type !== '1500H' || (sh.machine && sh.work)) && pairs.length > 0;
+    const groups = new Map(); for (const x of pairs){ const k = setupText(daySetup(x.t, x.d)); groups.set(k, (groups.get(k) || 0) + 1); }
+    const now = groups.size === 1 ? `<b>${esc([...groups.keys()][0])}</b> på ${pairs.length === 1 ? 'dagen' : 'alle ' + pairs.length + ' dagene'}`
       : [...groups].map(([x, n]) => `<div><b>${esc(x)}</b> · ${n} ${n === 1 ? 'dag' : 'dager'}</div>`).join('');
-    body = `<div class="sheet-h"><div><div class="t">${esc(t.name)}</div><div class="s">${esc(ddmm(sh.from))} – ${esc(ddmm(sh.to))} · ${esc(shiftOf(t.shift).name)} · ${days.length} ${off ? (days.length === 1 ? 'fridag (overtid)' : 'fridager (overtid)') : (days.length === 1 ? 'arbeidsdag' : 'arbeidsdager')} · ${fmtH(tot)} t${skip ? ` · ${skip} ${skip === 1 ? 'dag' : 'dager'} hoppes over` : ''}</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
-      ${days.length ? `<div class="sec"><h3>Ført nå</h3><div class="preview">${now}</div></div>` : ''}
-      <div class="sec"><h3>Aktivitet</h3>${actPicker(allowed(t), sh.act)}</div>
+    const dagTxt = off ? (pairs.length === 1 ? 'fridag (overtid)' : 'fridager (overtid)') : (pairs.length === 1 ? 'arbeidsdag' : 'arbeidsdager');
+    const segTxt = g => `${esc(ddmm(g.from))}${g.to !== g.from ? ' – ' + esc(ddmm(g.to)) : ''}`;
+    const head = ts.length === 1 && sh.segs.length === 1
+      ? `<div class="t">${esc(ts[0].name)}</div><div class="s">${segTxt(sh.segs[0])} · ${esc(shiftOf(ts[0].shift).name)} · ${pairs.length} ${dagTxt} · ${fmtH(tot)} t${skip ? ` · ${skip} ${skip === 1 ? 'dag' : 'dager'} hoppes over` : ''}</div>`
+      : `<div class="t">${ts.length} ${ts.length === 1 ? 'tekniker' : 'teknikere'} · ${pairs.length} ${dagTxt}</div><div class="s">${fmtH(tot)} t${skip ? ` · ${skip} ${skip === 1 ? 'dag' : 'dager'} hoppes over` : ''}</div>
+        <div class="segs">${sh.segs.map(g => `<span><b>${esc(tech(g.t).name)}</b> ${segTxt(g)}</span>`).join('')}</div>`;
+    body = `<div class="sheet-h"><div>${head}</div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
+      ${pairs.length ? `<div class="sec"><h3>Ført nå</h3><div class="preview">${now}</div></div>` : ''}
+      <div class="sec"><h3>Aktivitet</h3>${actPicker(acts, sh.act)}</div>
       ${hasMW(a) ? h1500Picker(sh) : ''}
       <div class="hint">Hver dag får full arbeidsdag med aktiviteten.${busy ? ` Føringene på ${busy} ${busy === 1 ? 'dag' : 'dager'} erstattes.` : ''}</div>
-      <div class="sheet-f"><button class="btn danger lead" data-action="range-clear">Nullstill dagene</button><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="range-apply" ${ok ? '' : 'disabled'}>Før ${days.length} ${days.length === 1 ? 'dag' : 'dager'}</button></div>`;
+      <div class="sheet-f"><button class="btn danger lead" data-action="range-clear">Nullstill dagene</button><button class="btn" data-action="close">Avbryt</button><button class="btn primary" data-action="range-apply" ${ok ? '' : 'disabled'}>Før ${pairs.length} ${pairs.length === 1 ? 'dag' : 'dager'}</button></div>`;
   } else if (sh.mode === 'extra'){
     body = `<div class="sheet-h"><div><div class="t">Ekstra personell</div><div class="s">Vises på skiftet i perioden. Timer føres som vanlig.</div></div><button class="icon-btn x" data-action="close" aria-label="Lukk">×</button></div>
       <div class="form">
@@ -213,11 +246,12 @@ export const actions = {
       renderSheet(); render(); toastUndo('Føring slettet', snap); }}); },
   'range-apply'(el, sh){
     const a = act(sh.act); if (!a) return; const snap = snapshot();
-    const n = applyRange(sh.tech, sh.from, sh.to, a.id, sh.machine || '', sh.work || ''); save(); closeSheet();
-    toastUndo(tech(sh.tech).name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ': ' + n + ' ' + (n === 1 ? 'dag' : 'dager') + ' satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · '), snap); },
-  'range-clear'(el, sh){ const t0 = tech(sh.tech);
-    ask({title:'Nullstille dagene?', text:'Alle føringer for ' + t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' fjernes. LMS standard fyller arbeidsdagene igjen.', ok:'Nullstill', fn:() => {
-      const snap = snapshot(); clearRange(sh.tech, sh.from, sh.to); save(); closeSheet(); toastUndo(t0.name + ' ' + ddmm(sh.from) + '–' + ddmm(sh.to) + ' nullstilt', snap); }}); },
+    let n = 0; for (const g of sh.segs) n += applyRange(g.t, g.from, g.to, a.id, sh.machine || '', sh.work || '');
+    save(); closeSheet();
+    toastUndo(rangeTxt(sh.segs) + ': ' + n + ' ' + (n === 1 ? 'dag' : 'dager') + ' satt til ' + [a.name, sh.machine, sh.work].filter(Boolean).join(' · '), snap); },
+  'range-clear'(el, sh){
+    ask({title:'Nullstille dagene?', text:'Alle føringer for ' + rangeTxt(sh.segs) + ' fjernes. LMS standard fyller arbeidsdagene igjen.', ok:'Nullstill', fn:() => {
+      const snap = snapshot(); for (const g of sh.segs) clearRange(g.t, g.from, g.to); save(); closeSheet(); toastUndo(rangeTxt(sh.segs) + ' nullstilt', snap); }}); },
   roles(el){ UI.sheet = {mode:'roles', tech:el.dataset.t}; renderSheet(); },
   'tech-shift'(el){ const t = tech(el.dataset.t); if (!t) return; const sid = +el.dataset.s; const snap = snapshot();
     if (!moveTech(t.id, sid)) return; save(); renderSheet(); render(); toastUndo(t.name + ' flyttet til ' + shiftOf(sid).name, snap); },

@@ -20,9 +20,10 @@ export const FIXED_ROLES = ['Assessor','B1','B2','CRS','Independent','RGR','Hot 
    (se lmsFill i schedule.js og recomputeAuto/autoFill i state.js). */
 export const LMS = 'h1500';
 
-/* Faste aktiviteter. color er indeks i --a1 … --a11. mw: føres med maskin og arbeid (LMS har det alltid). */
+/* Faste aktiviteter. color er indeks i --a1 … --a11. mw: føres med maskin og arbeid (LMS har det alltid).
+   allM: kan velge alle maskiner; ellers bare de som er «I dokk». */
 export const ACTIVITIES = () => [
-  {id:'line',name:'Line',code:'L',role:'',type:'n',color:1,mw:true},
+  {id:'line',name:'Line',code:'L',role:'',type:'n',color:1,mw:true,allM:true},
   {id:LMS,name:'LMS',code:'L',role:'',type:'1500H',color:2},
   {id:'ass',name:'Assessor',code:'A',role:'Assessor',type:'n',color:3},
   {id:'assm',name:'Assessment',code:'As',role:'',type:'n',color:11},
