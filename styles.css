@@ -299,6 +299,9 @@ textarea.note{min-height:0;font-family:var(--f-body);font-size:14px;resize:verti
 /* ark for flere rader: liste over utvalgene */
 .sheet-h .segs{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:13px;color:var(--muted)}
 .sheet-h .segs b{color:var(--fg);font-weight:500}
+/* ferdige maskiner (kan velges for Line) */
+.pill.done{border-style:dashed;color:var(--muted)}
+.pill.done[aria-pressed="true"]{color:var(--accent-fg)}
 /* toast */
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--surface);padding:10px 16px;border-radius:8px;z-index:60;font-weight:500;max-width:calc(100% - 32px);display:flex;align-items:center;gap:14px}
 .toast[hidden]{display:none}

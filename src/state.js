@@ -34,6 +34,8 @@ export const sumH = arr => arr.reduce((a,e) => a + (+e.hours||0), 0);
 /* Aktiviteter som føres med maskin og arbeid: LMS, og faste aktiviteter merket mw (Line, Mod). */
 export const hasMW = a => !!a && (a.type === '1500H' || !!a.mw);
 export const mwText = e => [e.machine, e.work].filter(Boolean).join(' · ');
+/* Maskinene en aktivitet kan føres på: Line alle, LMS og Mod bare de som er «I dokk». Valgt maskin tas alltid med. */
+export const machinesFor = (a, current) => S.machines.filter(m => (a && a.allM) || m.active || m.name === current);
 /* LMS-timer uten maskin eller arbeid: det skiftlederen må fylle ut (gjelder fra og med i dag og bakover) */
 export const lacksMW = e => act(e.act)?.type === '1500H' && +e.hours > 0 && (!e.machine || !e.work);
 export const label = e => { const a = act(e.act); if (!a) return 'Ukjent'; return hasMW(a) ? [a.name, e.machine, e.work].filter(Boolean).join(' · ') : a.name; };
@@ -121,7 +123,7 @@ export function migrate(o){
   const f = freshState();
   o.sched = f.sched; o.days = f.days; o.shifts = f.shifts; delete o.hours;
   LOCKED.forEach((id, i) => { const fa = f.acts.find(a => a.id === id); const cur = o.acts.find(a => a.id === id);
-    if (!cur) o.acts.splice(Math.min(i, o.acts.length), 0, fa); else { cur.name = fa.name; cur.role = fa.role; cur.type = fa.type; if (fa.mw) cur.mw = true; else delete cur.mw; }
+    if (!cur) o.acts.splice(Math.min(i, o.acts.length), 0, fa); else { cur.name = fa.name; cur.role = fa.role; cur.type = fa.type; for (const k of ['mw', 'allM']) if (fa[k]) cur[k] = true; else delete cur[k]; }
     if (fa.role && !o.roles.includes(fa.role)) o.roles.push(fa.role); });
   o.acts = o.acts.filter(a => a.id !== 'eo'); o.entries = (o.entries || []).filter(e => e.act !== 'eo');
   for (const t of o.techs) t.roles = t.roles.filter(r => r !== 'Engine Overhaul');

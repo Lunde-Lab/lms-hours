@@ -20,7 +20,7 @@ export function vOpp(){
   h += `<div style="display:grid;gap:16px;align-content:start;min-width:0">`;
   h += `<section class="panel set"><h2>Maskiner (LMS)</h2><table><thead><tr><th>Maskin</th><th>Status</th><th></th></tr></thead><tbody>
     ${S.machines.length ? S.machines.map(m => `<tr><td class="reg">${esc(m.name)}</td><td><button class="rolebtn" data-action="m-active" data-m="${m.id}" aria-pressed="${m.active}">${m.active?'I dokk':'Ferdig'}</button></td><td><button class="btn sm danger" data-action="del-m" data-m="${m.id}">Fjern</button></td></tr>`).join('') : '<tr><td colspan="3" class="muted">Ingen maskiner. Legg til her eller direkte når du fører LMS.</td></tr>'}
-    </tbody></table><div class="muted" style="font-size:13px">Ferdige maskiner vises ikke ved føring, men timene blir i rapporten.</div>
+    </tbody></table><div class="muted" style="font-size:13px">«I dokk»-maskiner kan velges på LMS, Line og Mod. Ferdige maskiner kan bare velges på Line. Timene blir uansett i rapporten.</div>
     <div class="row"><input type="text" id="new-m" class="field" placeholder="F.eks. ONX"><button class="btn" data-action="add-m2">Legg til</button></div></section>`;
   h += `<section class="panel set"><h2>Data</h2><div class="row">
       <button class="btn" data-action="backup">Kopier backup</button>

@@ -2,7 +2,7 @@
 import { dn, isoOf, todayIso, ddmm, longDate, fmtH, esc, uid } from '../util.js';
 import { PH } from '../model.js';
 import { S, UI, save, act, tech, shiftOf, entriesOf, manualOf, phase, workHours, timeTxt, stdHours, extraUntil,
-  sumH, label, hasMW, lacksMW, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
+  sumH, label, hasMW, lacksMW, machinesFor, noteOf, setNote, color, allowed, activeOn, workDay, offDay, recomputeAuto, rangeDays, applyRange, clearRange } from '../state.js';
 import { render } from '../render.js';
 import { toast, toastUndo, snapshot } from './toast.js';
 import { ask, promptText } from './dialog.js';
@@ -66,9 +66,9 @@ function extraPreview(sh){
 }
 function entryLabel(e){
   const a = act(e.act); if (!hasMW(a)) return esc(label(e));
-  const ms = S.machines.filter(m => m.active || m.name === e.machine).map(m => m.name);
+  const ms = machinesFor(a, e.machine);
   const miss = f => lacksMW(e) && e.date <= todayIso() && !e[f] ? ' miss' : '';   /* tomt felt som må fylles ut */
-  return `<span class="ln1">${esc(a.name)}${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini${miss('machine')}" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${ms.map(n => `<option ${n === e.machine ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select><select class="mini${miss('work')}" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
+  return `<span class="ln1">${esc(a.name)}${e.auto ? '<span class="atag">standard</span>' : ''}</span><span class="ln2"><select class="mini${miss('machine')}" data-em="${e.id}" aria-label="Maskin"><option value="">Ingen maskin</option>${machineOpts(ms, e.machine)}</select><select class="mini${miss('work')}" data-ew="${e.id}" aria-label="Arbeid"><option value="">Arbeid –</option>${S.work.map(w => `<option ${w === e.work ? 'selected' : ''}>${esc(w)}</option>`).join('')}</select></span>`;
 }
 
 /* ---------- føringer ---------- */
@@ -125,12 +125,18 @@ function rangeTxt(segs){
 function actPicker(acts, sel){
   return `<div class="grid-btns">${acts.map(a => `<button class="opt" data-action="pick-act" data-a="${a.id}" aria-pressed="${sel===a.id}"><i class="dot" style="background:${color(a)}"></i>${esc(a.name)}</button>`).join('')}</div>`;
 }
+/* Ferdige maskiner (bare for Line) står for seg selv, så det er lett å se hvilke som er i dokk */
+function machineOpts(ms, sel){
+  const opt = m => `<option ${m.name === sel ? 'selected' : ''}>${esc(m.name)}</option>`;
+  const done = ms.filter(m => !m.active);
+  return done.length ? `<optgroup label="I dokk">${ms.filter(m => m.active).map(opt).join('')}</optgroup><optgroup label="Ferdig">${done.map(opt).join('')}</optgroup>` : ms.map(opt).join('');
+}
 function h1500Picker(sh){
-  const ms = S.machines.filter(m => m.active);
+  const ms = machinesFor(act(sh.act), sh.machine);
   return `<div class="sec"><h3>Maskin</h3><div class="pills">
-      ${ms.map(m => `<button class="pill reg" data-action="pick-m" data-m="${esc(m.name)}" aria-pressed="${sh.machine===m.name}">${esc(m.name)}</button>`).join('')}
+      ${ms.map(m => `<button class="pill reg${m.active ? '' : ' done'}" data-action="pick-m" data-m="${esc(m.name)}" aria-pressed="${sh.machine===m.name}"${m.active ? '' : ' title="Ferdig (ikke i dokk)"'}>${esc(m.name)}</button>`).join('')}
       <button class="pill" data-action="new-m">+ Ny maskin</button>
-    </div>${ms.length ? '' : '<div class="muted" style="font-size:13px">Ingen aktive maskiner ennå. Trykk «+ Ny maskin».</div>'}</div>
+    </div>${ms.length ? '' : '<div class="muted" style="font-size:13px">Ingen maskiner å velge ennå. Trykk «+ Ny maskin».</div>'}</div>
     <div class="sec"><h3>Arbeid</h3><div class="pills">${S.work.map(w => `<button class="pill" data-action="pick-w" data-w="${esc(w)}" aria-pressed="${sh.work===w}">${esc(w)}</button>`).join('')}</div></div>`;
 }
 export function renderSheet(){
