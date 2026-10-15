@@ -6,6 +6,7 @@ Status: proof of concept. Appen lagrer i nettleseren (localStorage) og bruker an
 
 - `index.html` + `src/` – appen (native ES-moduler, ingen byggesteg)
 - `prototype/index.html` – opprinnelig prototype, fasit for funksjonalitet og design
+- `excel/LMS-timer.xlsx` – samme kalender, timeføring og rapport som Excel-arbeidsbok (lages av `excel/lag_excel.py`)
 - `supabase/drafts/` – SQL-utkast for senere Supabase-oppsett (kjøres ikke automatisk)
 
 ## Kjøre lokalt

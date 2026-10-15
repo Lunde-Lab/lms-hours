@@ -38,6 +38,7 @@ src/storage/index.js       felles lagringsgrensesnitt + valg av adapter
 src/storage/local.js       localStorage (samme nøkkel/format som prototypen)
 src/storage/supabase.js    tom stub med samme grensesnitt
 supabase/drafts/           SQL-utkast (kjøres ikke automatisk)
+excel/                     LMS-timer.xlsx (kalender, timeføring, rapport i Excel) og lag_excel.py som lager den
 tests/                     node:test
 ```
 
@@ -48,6 +49,7 @@ Hver visning/UI-modul eksporterer `actions` (navn = `data-action`) og eventuelt 
 ```
 npm test        # node --test, ingen avhengigheter
 npm start       # statisk server på http://localhost:8080
+python3 excel/lag_excel.py   # lager excel/LMS-timer.xlsx på nytt (krever openpyxl)
 ```
 
 Deploy: `.github/workflows/pages.yml` publiserer roten til GitHub Pages ved push til `main`
